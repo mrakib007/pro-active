@@ -15,3 +15,19 @@ The application source and final folder structure are intentionally not created 
 - ESLint and Prettier for maintainability
 
 The project does not use an all-in-one authentication or backend framework at this stage. The purpose is to understand the boundaries and trade-offs before adding abstractions.
+
+## Phase 0 commands
+
+Run these commands from this directory:
+
+```powershell
+npm test
+npm run typecheck
+npm run build
+npm run lint
+npm run format:check
+```
+
+Development uses `npm run dev`; the compiled entrypoint uses `npm start`. Phase 0 does not require PostgreSQL, Redis, or the frontend.
+
+The runtime exposes `GET /health` for liveness and `GET /ready` for readiness. See [PHASE-0-RUNTIME-FOUNDATION.md](PHASE-0-RUNTIME-FOUNDATION.md) for the reasoning, failure behavior, and verification evidence.

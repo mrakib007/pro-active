@@ -18,6 +18,38 @@ Every concept follows the same loop:
 
 We do not move to the next concept merely because the code works. We move when the behavior, trade-offs, and failure modes can be explained clearly.
 
+## Planned backend architecture
+
+ProjectHub will be a feature-oriented modular monolith. We will use practical MVC inside each feature, supported by service and repository layers:
+
+```text
+Route → Controller → Service → Repository → Database
+```
+
+- **Routes** map HTTP methods and URLs.
+- **Controllers** translate HTTP requests and responses; they should not contain core business rules.
+- **Services** enforce business rules and define transaction boundaries.
+- **Repositories** contain feature-specific persistence queries.
+- **Models** are represented by Prisma schema/database entities.
+- **Views** are JSON responses or serializers because the frontend is a separate project.
+- **Infrastructure** contains shared technical integrations such as Prisma, Redis, and queues.
+
+The planned shape is:
+
+```text
+backend/src/
+├── modules/             # auth, workspaces, projects, tasks, etc.
+├── infrastructure/     # database, cache, queue
+├── shared/              # genuinely cross-feature code only
+├── app.ts
+├── server.ts
+├── config.ts
+├── logger.ts
+└── errors.ts
+```
+
+We are not using pure textbook MVC, global folders that scatter each feature, or microservices at this stage. The structure will be introduced deliberately as each learning phase requires it; we will not create empty folders for every future feature now.
+
 ## Living concept notes
 
 Yes: each major concept should have one living Markdown note that grows as we work through it. For example, the authentication note should be updated after signup, password hashing, login, sessions/tokens, authorization, logout, security tests, and failure experiments—not replaced with a separate note for every tiny task.
@@ -34,7 +66,7 @@ Each concept note should answer:
 - What would change at larger scale?
 - What questions remain?
 
-The exact location and naming convention for these notes will be chosen with the application structure. We are intentionally not locking the project folder structure yet.
+Concept notes will live alongside the project documentation, while feature code will follow the planned modular structure above.
 
 ## AI collaboration rules
 
