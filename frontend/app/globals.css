@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f4f2ec;
+  --surface: #fbfaf7;
+  --surface-muted: #eeece5;
+  --ink: #18211b;
+  --muted: #6d756d;
+  --line: #dedfd7;
+  --line-strong: #c8ccc1;
+  --accent: #5558b7;
+  --accent-strong: #3e418f;
+  --accent-soft: #e8e8fa;
+  --accent-line: #c9c9ef;
+  --teal: #238b82;
+  --teal-soft: #e2f2ef;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-teal: var(--teal);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+::selection {
+  background: var(--accent-line);
+  color: var(--ink);
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-grid {
+  background-image:
+    linear-gradient(to right, rgb(24 33 27 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(24 33 27 / 0.035) 1px, transparent 1px);
+  background-position: center;
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 88%);
+}
+
+.auth-orbit {
+  border: 1px solid rgb(85 88 183 / 0.12);
+  box-shadow:
+    0 0 0 34px rgb(85 88 183 / 0.025),
+    0 0 0 68px rgb(85 88 183 / 0.02);
+}

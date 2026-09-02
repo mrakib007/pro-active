@@ -5,6 +5,10 @@ import type { Express } from "express";
 import type { Logger } from "pino";
 import { createApp } from "./app.js";
 import { config } from "./config.js";
+import {
+  checkDatabase,
+  disconnectDatabase,
+} from "./infrastructure/database/prisma.js";
 import { logger } from "./logger.js";
 
 export interface ServerOptions {
@@ -12,6 +16,7 @@ export interface ServerOptions {
   host?: string;
   logger?: Logger;
   port?: number;
+  readinessCheck?: () => Promise<void>;
 }
 
 const pendingClosures = new WeakMap<Server, Promise<void>>();
@@ -21,8 +26,15 @@ export async function startServer({
   host = config.HOST,
   logger: serverLogger = logger,
   port = config.PORT,
+  readinessCheck,
 }: ServerOptions = {}): Promise<Server> {
-  const server = createServer(app ?? createApp({ logger: serverLogger }));
+  const server = createServer(
+    app ??
+      createApp({
+        logger: serverLogger,
+        readinessCheck: readinessCheck ?? checkDatabase,
+      }),
+  );
 
   await new Promise<void>((resolvePromise, rejectPromise) => {
     const handleError = (error: Error) => {
@@ -81,6 +93,7 @@ async function main(): Promise<void> {
     logger.info({ signal }, "shutdown signal received");
 
     void closeServer(runningServer)
+      .then(() => disconnectDatabase())
       .then(() => {
         logger.info("server closed");
       })

@@ -9,6 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "db:check": "tsx scripts/check-database.ts",
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/src/server.js",
     "test": "vitest run",
