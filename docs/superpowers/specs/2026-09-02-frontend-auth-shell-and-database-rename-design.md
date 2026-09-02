@@ -1,12 +1,12 @@
-# Frontend Auth Shell and Database Rename Design
+# Frontend Auth Shell Design
 
 ## Goal
 
-Rename the empty local PostgreSQL database to `pro-active` and create a polished Next.js/Tailwind authentication UI directly inside `C:\Projects\pro-active\frontend`, without starting backend authentication or creating product tables.
+Keep the existing local PostgreSQL database named `pro_active` and create a polished Next.js/Tailwind authentication UI directly inside `C:\Projects\pro-active\frontend`, without starting backend authentication or creating product tables.
 
-## Database decision
+## Database boundary
 
-The existing empty database `pro_active` will be renamed to `pro-active` with a quoted PostgreSQL identifier. The connection URL will be updated to use the new database name. The rename must preserve the database and must not drop or recreate it.
+The existing empty database `pro_active` remains unchanged. This frontend slice does not modify the database, its connection URL, Prisma schema, or backend source.
 
 The backend currently uses Prisma `6.12.0` with its standard PostgreSQL connector. We will not add `@prisma/adapter-pg` in this phase. Prisma's built-in connector is the smallest and clearest choice for a normal Node.js process connecting to local PostgreSQL. A driver adapter can be evaluated later if we need custom `pg` driver behavior, edge/serverless deployment, or specialized pooling.
 
@@ -70,6 +70,7 @@ Backend authentication will be connected in the later authentication phase, wher
 
 - No backend auth endpoints or auth database tables.
 - No Prisma adapter installation.
+- No database rename or connection changes.
 - No OAuth buttons that imply implemented providers.
 - No fake successful login/signup flow.
 - No state-management library, component library, or design-system package yet.
@@ -79,8 +80,7 @@ Backend authentication will be connected in the later authentication phase, wher
 
 The change is successful when:
 
-- PostgreSQL contains the same empty database under the exact name `pro-active`.
-- The local Prisma connection check still passes against `pro-active`.
+- The existing `pro_active` database and backend connection remain untouched.
 - The frontend package files live directly under `frontend`.
 - `/login` and `/signup` render responsively with the shared visual system.
 - The frontend builds and lints successfully.
