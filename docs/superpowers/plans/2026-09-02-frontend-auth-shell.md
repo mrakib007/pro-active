@@ -16,7 +16,7 @@
 - Use TypeScript, App Router, Tailwind CSS, and ESLint.
 - Keep the existing PostgreSQL database named `pro_active` and do not modify backend source or Prisma configuration.
 - Do not install `@prisma/adapter-pg`, add auth API calls, add OAuth providers, or create fake successful authentication.
-- Use a warm paper-toned productivity aesthetic with deep ink typography, restrained indigo/teal accents, subtle surfaces, responsive layout, and visible focus states.
+- Use an old-money editorial aesthetic with ivory surfaces, deep forest ink, muted stone text, antique-brass accents, serif display type, responsive layout, and visible focus states.
 - Write tests before custom component behavior and observe the failing RED state before implementing it.
 - Add only the shared components needed by both authentication routes; avoid a premature design-system package.
 
@@ -218,7 +218,7 @@ Expected: all three tests pass.
 
 - [x] **Step 3: Implement the visual shell**
 
-Create `AuthShell` with a responsive two-panel layout: a product story/preview panel on large screens and the form panel. Use Tailwind classes for spacing, surfaces, borders, type scale, focus rings, and responsive breakpoints. Use CSS-only decorative grid/dot geometry so the page has no external image dependency.
+Create `AuthShell` with a responsive two-panel layout: a product story/preview panel on large screens and the form panel. Use Tailwind classes for spacing, surfaces, borders, type scale, focus rings, and responsive breakpoints. Use CSS-only hairline rules and restrained color tokens so the page has no external image dependency.
 
 - [x] **Step 4: Compose login and signup routes**
 
@@ -226,7 +226,7 @@ Use `/login` and `/signup` pages with shared `AuthShell` and `AuthForm`. Add lin
 
 - [x] **Step 5: Add global visual tokens and metadata**
 
-Update `app/globals.css` with the Tailwind import and minimal global tokens/base rules for the paper background, ink, muted text, accent, selection, and decorative pattern. Update `app/layout.tsx` metadata to identify Pro-Active/ProjectHub and keep the document language accessible.
+Update `app/globals.css` with the Tailwind import and minimal global tokens/base rules for the paper background, ink, muted text, accents, selection, and editorial story-panel colors. Update `app/layout.tsx` metadata to identify Pro-Active/ProjectHub and keep the document language accessible.
 
 ### Task 4: Verify the UI and document the frontend slice
 
@@ -278,6 +278,7 @@ Confirm the project files are directly under `frontend`, no nested Next.js direc
 - The production build generated the root, /login, and /signup routes.
 - Browser review covered the desktop login layout, the 390x844 mobile login layout, and the 390x844 mobile signup layout.
 - A short desktop viewport regression was reproduced and fixed; the measured header-to-intro gap is now positive.
+- The desktop auth canvas is locked to the viewport height; at 1280x720 the document scrollHeight and clientHeight both measure 720.
 - Browser behavior checks confirmed the UI-only login status, mismatched-password validation, and password visibility toggle.
 - The existing pro_active database name and backend authentication boundary remain unchanged by this frontend slice.
 

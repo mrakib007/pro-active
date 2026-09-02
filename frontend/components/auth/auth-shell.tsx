@@ -16,20 +16,18 @@ const workItems = [
 ];
 
 function dotClass(tone: string) {
-  if (tone === "teal") return "bg-[var(--teal)]";
-  if (tone === "indigo") return "bg-[var(--accent)]";
-  return "bg-[#d6a35c]";
+  if (tone === "teal") return "bg-[var(--story-forest)]";
+  if (tone === "indigo") return "bg-[var(--story-brass)]";
+  return "bg-[var(--story-line-strong)]";
 }
 
 function BrandMark() {
   return (
     <span
       aria-hidden="true"
-      className="relative grid size-10 shrink-0 place-items-center rounded-[14px] bg-[var(--ink)] shadow-[0_10px_20px_-12px_rgba(23,31,27,0.9)]"
+      className="relative grid size-10 shrink-0 place-items-center rounded-[5px] border border-[var(--story-brass)] bg-[var(--story-forest)] shadow-[0_10px_20px_-12px_rgba(23,31,27,0.7)]"
     >
-      <span className="absolute h-5 w-1.5 -translate-x-1.5 rounded-full bg-[var(--accent)]" />
-      <span className="absolute h-2.5 w-1.5 translate-x-1.5 -translate-y-1.5 rounded-full bg-[var(--teal)]" />
-      <span className="absolute h-2.5 w-1.5 translate-x-1.5 translate-y-1.5 rounded-full bg-white/80" />
+      <span className="font-serif text-lg leading-none text-[var(--story-brass)]">P</span>
     </span>
   );
 }
@@ -37,7 +35,7 @@ function BrandMark() {
 function BrandLink({ compact = false }: { compact?: boolean }) {
   return (
     <Link
-      className="group inline-flex items-center gap-3 rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-soft)]"
+      className="group inline-flex items-center gap-3 rounded-[5px] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--story-brass-soft)]"
       href="/"
     >
       <BrandMark />
@@ -63,99 +61,82 @@ export function AuthShell({
   footer,
 }: AuthShellProps) {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[var(--paper)] text-[var(--ink)]">
-      <div aria-hidden="true" className="auth-grid pointer-events-none absolute inset-0" />
-
-      <div className="relative mx-auto grid min-h-screen max-w-[1680px] lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
+    <main className="relative min-h-screen overflow-hidden bg-[var(--paper)] text-[var(--ink)] lg:h-screen lg:max-h-screen lg:overflow-hidden">
+      <div className="relative mx-auto grid min-h-screen max-w-[1680px] lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
         <section
           aria-label="Pro-Active introduction"
-          className="relative hidden min-h-screen flex-col gap-10 justify-between overflow-hidden border-r border-[var(--line)] px-8 py-8 lg:flex xl:px-14 xl:py-10"
+          className="relative hidden min-h-screen flex-col gap-10 justify-between overflow-hidden border-r border-[var(--story-line)] bg-[var(--story-paper)] px-8 py-8 lg:flex lg:h-full lg:min-h-0 xl:px-14 xl:py-10"
         >
-          <div aria-hidden="true" className="auth-orbit absolute -right-40 top-24 size-[520px] rounded-full" />
-
           <header className="relative flex shrink-0 items-center justify-between gap-6">
             <BrandLink />
-            <span className="rounded-full border border-[var(--line)] bg-white/50 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)] backdrop-blur">
-              Workspace OS
+            <span className="border-y border-[var(--story-line-strong)] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--story-muted)]">
+              ProjectHub · 01
             </span>
           </header>
 
           <div className="relative shrink-0 max-w-3xl">
-            <p className="mb-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
-              <span aria-hidden="true" className="h-px w-8 bg-[var(--accent)]" />
-              Less noise. More momentum.
+            <p className="mb-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--story-brass)]">
+              <span aria-hidden="true" className="h-px w-10 bg-[var(--story-brass)]" />
+              A considered workspace
             </p>
-            <h1 className="max-w-2xl text-6xl font-semibold leading-[0.95] tracking-[-0.075em] text-[var(--ink)] xl:text-8xl">
+            <h1 className="max-w-2xl font-serif text-6xl font-normal leading-[0.94] tracking-[-0.055em] text-[var(--story-ink)] xl:text-8xl">
               Make work feel{" "}
-              <span className="relative whitespace-nowrap text-[var(--accent)]">
+              <span className="text-[var(--story-forest)]">
                 findable.
-                <svg
-                  aria-hidden="true"
-                  className="absolute -bottom-3 left-0 h-3 w-full overflow-visible text-[var(--teal)]"
-                  fill="none"
-                  viewBox="0 0 220 12"
-                >
-                  <path
-                    d="M2 8.5C47 2.5 164 1.5 218 6"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeWidth="3"
-                  />
-                </svg>
               </span>
             </h1>
-            <p className="mt-9 max-w-lg text-base leading-7 text-[var(--muted)] xl:text-lg">
+            <div aria-hidden="true" className="mt-6 h-px w-16 bg-[var(--story-brass)]" />
+            <p className="mt-6 max-w-lg font-serif text-base leading-7 text-[var(--story-muted)] xl:text-lg">
               A calm home for teams to plan, decide, and move projects forward—without losing the thread.
             </p>
 
-            <div className="relative mt-12 max-w-[720px]">
-              <div aria-hidden="true" className="absolute -inset-3 rounded-[32px] border border-[var(--line)] bg-white/20" />
-              <article className="relative overflow-hidden rounded-[27px] border border-[var(--line-strong)] bg-[#fcfcf9] shadow-[0_30px_80px_-44px_rgba(24,33,27,0.7)]">
-                <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
+            <div className="relative mt-10 max-w-[720px]">
+              <article className="relative overflow-hidden rounded-[6px] border border-[var(--story-line-strong)] bg-[var(--story-surface)] shadow-[0_26px_70px_-46px_rgba(41,67,51,0.7)]">
+                <div className="flex items-center justify-between border-b border-[var(--story-line)] px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <span className="grid size-8 place-items-center rounded-xl bg-[var(--accent-soft)] text-sm font-bold text-[var(--accent)]">
+                    <span className="grid size-8 place-items-center rounded-[4px] bg-[var(--story-brass-soft)] font-serif text-sm font-bold text-[var(--story-forest)]">
                       E
                     </span>
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--story-muted)]">
                         Workspace overview
                       </p>
-                      <p className="mt-0.5 text-sm font-semibold tracking-[-0.02em] text-[var(--ink)]">
+                      <p className="mt-0.5 font-serif text-sm font-semibold tracking-[-0.02em] text-[var(--story-ink)]">
                         Editorial launch
                       </p>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-[#e9f4ed] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[#27734f]">
-                    <span aria-hidden="true" className="size-1.5 rounded-full bg-[#45a875]" />
+                  <span className="inline-flex items-center gap-2 border-l-2 border-[var(--story-brass)] pl-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--story-forest)]">
+                    <span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--story-forest)]" />
                     On track
                   </span>
                 </div>
 
                 <div className="grid md:grid-cols-[168px_minmax(0,1fr)]">
-                  <aside className="hidden border-r border-[var(--line)] bg-[var(--surface-muted)] p-4 md:block">
-                    <p className="px-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+                  <aside className="hidden border-r border-[var(--story-line)] bg-[var(--story-surface-muted)] p-4 md:block">
+                    <p className="px-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--story-muted)]">
                       Navigate
                     </p>
-                    <div className="mt-4 space-y-1 text-xs font-semibold text-[var(--muted)]">
-                      <div className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-2 text-[var(--ink)] shadow-sm">
-                        <span className="size-1.5 rounded-full bg-[var(--accent)]" />
+                    <div className="mt-4 space-y-1 text-xs font-semibold text-[var(--story-muted)]">
+                      <div className="flex items-center gap-2 border-l-2 border-[var(--story-brass)] bg-white/45 px-2.5 py-2 text-[var(--story-ink)]">
+                        <span className="size-1.5 rounded-full bg-[var(--story-forest)]" />
                         Overview
                       </div>
                       <div className="flex items-center gap-2 px-2.5 py-2">
-                        <span className="size-1.5 rounded-full bg-[var(--line-strong)]" />
+                        <span className="size-1.5 rounded-full bg-[var(--story-line-strong)]" />
                         Projects
                       </div>
                       <div className="flex items-center gap-2 px-2.5 py-2">
-                        <span className="size-1.5 rounded-full bg-[var(--line-strong)]" />
+                        <span className="size-1.5 rounded-full bg-[var(--story-line-strong)]" />
                         Decisions
                       </div>
                     </div>
-                    <div className="mt-10 border-t border-[var(--line)] pt-4">
-                      <p className="px-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+                    <div className="mt-10 border-t border-[var(--story-line)] pt-4">
+                      <p className="px-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--story-muted)]">
                         Your week
                       </p>
-                      <div className="mt-3 flex items-center gap-2 px-2 text-xs font-semibold text-[var(--ink)]">
-                        <span className="grid size-6 place-items-center rounded-lg bg-[var(--teal-soft)] text-[10px] text-[var(--teal)]">
+                      <div className="mt-3 flex items-center gap-2 px-2 text-xs font-semibold text-[var(--story-ink)]">
+                        <span className="grid size-6 place-items-center rounded-[4px] bg-[var(--story-brass-soft)] font-serif text-[10px] text-[var(--story-forest)]">
                           12
                         </span>
                         Open items
@@ -166,35 +147,35 @@ export function AuthShell({
                   <div className="p-5 sm:p-6">
                     <div className="flex items-end justify-between gap-4">
                       <div>
-                        <p className="text-xs font-semibold text-[var(--muted)]">This week</p>
-                        <p className="mt-1 text-2xl font-semibold tracking-[-0.06em] text-[var(--ink)]">
+                        <p className="text-xs font-semibold text-[var(--story-muted)]">This week</p>
+                        <p className="mt-1 font-serif text-2xl font-semibold tracking-[-0.06em] text-[var(--story-ink)]">
                           Keep the signal.
                         </p>
                       </div>
-                      <span className="text-xs font-semibold text-[var(--accent)]">82% complete</span>
+                      <span className="text-xs font-semibold text-[var(--story-brass)]">82% complete</span>
                     </div>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
-                      <div className="h-full w-[82%] rounded-full bg-[var(--accent)]" />
+                    <div className="mt-4 h-1 overflow-hidden bg-[var(--story-line)]">
+                      <div className="h-full w-[82%] bg-[var(--story-forest)]" />
                     </div>
 
-                    <div className="mt-6 divide-y divide-[var(--line)] rounded-2xl border border-[var(--line)] bg-white/70 px-4">
+                    <div className="mt-6 divide-y divide-[var(--story-line)] border border-[var(--story-line)] bg-white/45 px-4">
                       {workItems.map((item) => (
                         <div className="flex items-center justify-between gap-4 py-3.5" key={item.label}>
                           <div className="flex min-w-0 items-center gap-3">
                             <span aria-hidden="true" className={"size-2 shrink-0 rounded-full " + dotClass(item.tone)} />
-                            <span className="truncate text-xs font-semibold text-[var(--ink)]">{item.label}</span>
+                            <span className="truncate text-xs font-semibold text-[var(--story-ink)]">{item.label}</span>
                           </div>
-                          <span className="shrink-0 text-[10px] font-semibold text-[var(--muted)]">{item.state}</span>
+                          <span className="shrink-0 text-[10px] font-semibold text-[var(--story-muted)]">{item.state}</span>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-[var(--ink)] px-4 py-3 text-white">
+                    <div className="mt-5 flex items-center justify-between rounded-[4px] bg-[var(--story-forest)] px-4 py-3 text-[var(--story-paper)]">
                       <div className="flex items-center gap-3">
-                        <span className="grid size-7 place-items-center rounded-lg bg-white/10 text-xs">✦</span>
-                        <span className="text-xs font-medium text-white/80">One clear next step</span>
+                        <span className="grid size-7 place-items-center rounded-[3px] border border-white/10 text-xs text-[var(--story-brass)]">✦</span>
+                        <span className="text-xs font-medium text-[var(--story-paper)]/80">One clear next step</span>
                       </div>
-                      <span className="text-sm text-[var(--teal)]">→</span>
+                      <span className="text-sm text-[var(--story-brass)]">→</span>
                     </div>
                   </div>
                 </div>
@@ -202,16 +183,16 @@ export function AuthShell({
             </div>
           </div>
 
-          <footer className="relative flex shrink-0 items-center justify-between gap-6 text-xs font-medium text-[var(--muted)]">
+          <footer className="relative flex shrink-0 items-center justify-between gap-6 text-xs font-medium text-[var(--story-muted)]">
             <span>Built for thoughtful teams.</span>
             <span className="flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-[var(--teal)]" />
+              <span className="size-1.5 rounded-full bg-[var(--story-brass)]" />
               Your workspace, in focus
             </span>
           </footer>
         </section>
 
-        <section className="relative flex min-h-screen w-full items-center justify-center px-6 py-8 sm:px-10 lg:px-14 xl:px-20">
+        <section className="relative flex min-h-screen w-full items-center justify-center px-6 py-8 sm:px-10 lg:h-full lg:min-h-0 lg:px-14 xl:px-20">
           <div className="w-full max-w-[470px]">
             <div className="mb-14 flex items-center justify-between lg:hidden">
               <BrandLink compact />

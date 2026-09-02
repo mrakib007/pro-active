@@ -24,17 +24,17 @@ The application will use `/login` and `/signup` routes with shared authenticatio
 
 ## Visual direction
 
-Use a refined productivity-product aesthetic rather than a generic template:
+Use a restrained old-money editorial aesthetic rather than a generic SaaS template:
 
-- Warm paper-toned page background with deep ink typography.
-- A restrained indigo/teal accent system for actions and focus states.
+- Ivory paper-toned surfaces with deep forest ink, muted stone text, and antique-brass accents.
+- Serif display typography paired with small-cap sans-serif labels and fine hairline rules.
 - A two-panel desktop composition: a quiet brand/product story area and a focused form area.
-- A compact workspace preview card with layered surfaces to communicate the ProjectHub product context.
-- Subtle borders, soft shadows, consistent radii, and restrained decorative geometry.
+- A compact workspace preview card with cream surfaces, squared geometry, and understated status details.
+- Minimal decoration: no bright gradients, playful orbit graphics, oversized pills, or hand-drawn underline.
 - A single-column mobile layout that keeps the form primary and removes nonessential decoration.
 - Visible keyboard focus, semantic labels, adequate contrast, and touch-friendly controls.
 
-The design should feel calm, precise, and durable—closer to a carefully crafted productivity tool than a marketing landing page.
+The design should feel considered, archival, and durable—closer to a private members' club or an editorial desk than a marketing landing page.
 
 ## Component boundary
 

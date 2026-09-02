@@ -14,6 +14,16 @@
   --accent-line: #c9c9ef;
   --teal: #238b82;
   --teal-soft: #e2f2ef;
+  --story-paper: #f5f0e6;
+  --story-surface: #fbf8f0;
+  --story-surface-muted: #eee7db;
+  --story-ink: #1b2820;
+  --story-muted: #746f64;
+  --story-line: #d8cdbb;
+  --story-line-strong: #b9a98e;
+  --story-forest: #294333;
+  --story-brass: #a07b45;
+  --story-brass-soft: #eee2cd;
 }
 
 @theme inline {
@@ -45,20 +55,4 @@ button,
 a,
 input {
   -webkit-tap-highlight-color: transparent;
-}
-
-.auth-grid {
-  background-image:
-    linear-gradient(to right, rgb(24 33 27 / 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(24 33 27 / 0.035) 1px, transparent 1px);
-  background-position: center;
-  background-size: 64px 64px;
-  mask-image: linear-gradient(to bottom, black 0%, transparent 88%);
-}
-
-.auth-orbit {
-  border: 1px solid rgb(85 88 183 / 0.12);
-  box-shadow:
-    0 0 0 34px rgb(85 88 183 / 0.025),
-    0 0 0 68px rgb(85 88 183 / 0.02);
 }
