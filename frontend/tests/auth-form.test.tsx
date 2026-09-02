@@ -4,6 +4,24 @@ import { describe, expect, test } from "vitest";
 import { AuthForm } from "../components/auth/auth-form";
 
 describe("AuthForm", () => {
+  test("shows field-level validation after submitting an empty login", async () => {
+    const user = userEvent.setup();
+    render(<AuthForm mode="login" />);
+
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(screen.getByText("Enter your email address.")).toBeInTheDocument();
+    expect(screen.getByText("Enter your password.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText(/^password$/i)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
   test("shows an honest local-only status after a valid login submission", async () => {
     const user = userEvent.setup();
     render(<AuthForm mode="login" />);
@@ -28,13 +46,12 @@ describe("AuthForm", () => {
       screen.getByLabelText(/confirm password/i),
       "A different password",
     );
+    await user.click(screen.getByLabelText(/workspace terms/i));
     await user.click(
       screen.getByRole("button", { name: /create workspace/i }),
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /passwords do not match/i,
-    );
+    expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
