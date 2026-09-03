@@ -68,6 +68,12 @@ Each concept note should answer:
 
 Concept notes will live alongside the project documentation, while feature code will follow the planned modular structure above.
 
+## Current backend concept notes
+
+- [Phase 0: Runtime Foundation](backend/PHASE-0-RUNTIME-FOUNDATION.md)
+- [Phase 1A: Database Connection](backend/PHASE-1-DATABASE-CONNECTION.md)
+- [Phase 2A: User Signup](backend/PHASE-2-USER-SIGNUP.md)
+
 ## AI collaboration rules
 
 Before asking an agent to write code for a task, ask it to explain:

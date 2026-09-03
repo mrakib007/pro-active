@@ -4,16 +4,20 @@ import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import type { Logger } from "pino";
 import { AppError, normalizeError } from "./errors.js";
+import { createAuthRouter } from "./modules/auth/auth.routes.js";
+import type { AuthService } from "./modules/auth/auth.types.js";
 
 export interface AppOptions {
   logger: Logger;
   readinessCheck?: () => Promise<void>;
+  registrationService?: AuthService;
   uptimeSeconds?: () => number;
 }
 
 export function createApp({
   logger,
   readinessCheck = async () => undefined,
+  registrationService,
   uptimeSeconds = () => process.uptime(),
 }: AppOptions): Express {
   const app = express();
@@ -40,6 +44,8 @@ export function createApp({
       next(new AppError(503, "SERVICE_NOT_READY", "Service is not ready"));
     }
   });
+
+  app.use("/api/auth", createAuthRouter(registrationService));
 
   app.use((_request, _response, next) => {
     next(new AppError(404, "ROUTE_NOT_FOUND", "Route not found"));
@@ -69,6 +75,9 @@ export function createApp({
       status: "error",
       code: normalizedError.code,
       message: normalizedError.message,
+      ...(normalizedError.details === undefined
+        ? {}
+        : { details: normalizedError.details }),
     });
   };
 
