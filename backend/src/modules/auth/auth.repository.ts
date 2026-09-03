@@ -4,6 +4,7 @@ import type {
   CreateUserRecord,
   StoredUser,
   UserRepository,
+  UserLookupRepository,
 } from "./auth.types.js";
 
 export class UserEmailAlreadyExistsError extends Error {
@@ -22,7 +23,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 export function createUserRepository(
   database: PrismaClient = prisma,
-): UserRepository {
+): UserRepository & UserLookupRepository {
   return {
     async createUser(input: CreateUserRecord): Promise<StoredUser> {
       try {
@@ -34,6 +35,9 @@ export function createUserRepository(
 
         throw error;
       }
+    },
+    async findUserByEmail(email: string): Promise<StoredUser | null> {
+      return database.user.findUnique({ where: { email } });
     },
   };
 }

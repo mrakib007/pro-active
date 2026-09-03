@@ -1,23 +1,32 @@
 import compression from "compression";
+import cookieParser from "cookie-parser";
 import express, { type ErrorRequestHandler, type Express } from "express";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import type { Logger } from "pino";
 import { AppError, normalizeError } from "./errors.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
-import type { AuthService } from "./modules/auth/auth.types.js";
+import type {
+  AuthService,
+  LoginService,
+  SessionService,
+} from "./modules/auth/auth.types.js";
 
 export interface AppOptions {
   logger: Logger;
+  loginService?: LoginService;
   readinessCheck?: () => Promise<void>;
   registrationService?: AuthService;
+  sessionService?: SessionService;
   uptimeSeconds?: () => number;
 }
 
 export function createApp({
   logger,
+  loginService,
   readinessCheck = async () => undefined,
   registrationService,
+  sessionService,
   uptimeSeconds = () => process.uptime(),
 }: AppOptions): Express {
   const app = express();
@@ -27,6 +36,7 @@ export function createApp({
   app.use(compression());
   app.use(pinoHttp({ logger }));
   app.use(express.json({ limit: "1mb" }));
+  app.use(cookieParser());
 
   app.get("/health", (_request, response) => {
     response.status(200).json({
@@ -45,7 +55,10 @@ export function createApp({
     }
   });
 
-  app.use("/api/auth", createAuthRouter(registrationService));
+  app.use(
+    "/api/auth",
+    createAuthRouter(registrationService, loginService, sessionService),
+  );
 
   app.use((_request, _response, next) => {
     next(new AppError(404, "ROUTE_NOT_FOUND", "Route not found"));

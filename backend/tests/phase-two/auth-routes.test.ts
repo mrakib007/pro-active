@@ -3,9 +3,14 @@ import request from "supertest";
 import { describe, expect, test, vi } from "vitest";
 import { createApp } from "../../src/app.js";
 import { UserEmailAlreadyExistsError } from "../../src/modules/auth/auth.repository.js";
+import { InvalidCredentialsError } from "../../src/modules/auth/auth.service.js";
+import { SESSION_COOKIE_NAME } from "../../src/modules/auth/session.service.js";
 import type {
   AuthService,
+  LoginResult,
+  LoginService,
   PublicUser,
+  SessionService,
 } from "../../src/modules/auth/auth.types.js";
 
 const silentLogger = pino({ enabled: false });
@@ -16,11 +21,32 @@ const publicUser: PublicUser = {
   createdAt: new Date("2026-09-03T00:00:00.000Z"),
 };
 
-function makeApp(registrationService: AuthService) {
+function makeSessionService(
+  overrides: Partial<SessionService> = {},
+): SessionService {
+  return {
+    createSession: async () => ({
+      token: "session-token",
+      expiresAt: new Date("2026-09-10T00:00:00.000Z"),
+    }),
+    getCurrentUser: async () => null,
+    revokeSession: async () => undefined,
+    ...overrides,
+  };
+}
+
+function makeApp(
+  registrationService: AuthService,
+  options: {
+    loginService?: LoginService;
+    sessionService?: SessionService;
+  } = {},
+) {
   return createApp({
     logger: silentLogger,
     readinessCheck: async () => undefined,
     registrationService,
+    ...options,
   });
 }
 
@@ -124,5 +150,176 @@ describe("registration route", () => {
       code: "EMAIL_ALREADY_REGISTERED",
       message: "An account with that email already exists",
     });
+  });
+});
+
+describe("login route", () => {
+  test("logs in a valid user and sets an HttpOnly session cookie", async () => {
+    const loginResult: LoginResult = {
+      user: publicUser,
+      sessionToken: "session-token",
+      expiresAt: new Date("2026-09-10T00:00:00.000Z"),
+    };
+    const loginUser = vi.fn(async () => loginResult);
+    const loginService: LoginService = { loginUser };
+    const registrationService: AuthService = {
+      registerUser: async () => publicUser,
+    };
+
+    const response = await request(
+      makeApp(registrationService, { loginService }),
+    )
+      .post("/api/auth/login")
+      .send({
+        email: " PERSON@Example.COM ",
+        password: "A secure password",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: "ok",
+      data: {
+        user: {
+          ...publicUser,
+          createdAt: "2026-09-03T00:00:00.000Z",
+        },
+      },
+    });
+    expect(response.body.data.user).not.toHaveProperty("passwordHash");
+    expect(loginUser).toHaveBeenCalledWith({
+      email: "person@example.com",
+      password: "A secure password",
+    });
+    expect(response.headers["set-cookie"]).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(`${SESSION_COOKIE_NAME}=session-token`),
+        expect.stringContaining("HttpOnly"),
+        expect.stringContaining("SameSite=Lax"),
+      ]),
+    );
+  });
+
+  test("rejects invalid login input before calling the login service", async () => {
+    const loginUser = vi.fn(async () => ({
+      user: publicUser,
+      sessionToken: "session-token",
+      expiresAt: new Date("2026-09-10T00:00:00.000Z"),
+    }));
+    const loginService: LoginService = { loginUser };
+    const registrationService: AuthService = {
+      registerUser: async () => publicUser,
+    };
+
+    const response = await request(
+      makeApp(registrationService, { loginService }),
+    )
+      .post("/api/auth/login")
+      .send({ email: "not-an-email", password: "short" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe("VALIDATION_ERROR");
+    expect(loginUser).not.toHaveBeenCalled();
+  });
+
+  test("returns a generic unauthorized response for invalid credentials", async () => {
+    const loginService: LoginService = {
+      loginUser: async () => {
+        throw new InvalidCredentialsError();
+      },
+    };
+    const registrationService: AuthService = {
+      registerUser: async () => publicUser,
+    };
+
+    const response = await request(
+      makeApp(registrationService, { loginService }),
+    )
+      .post("/api/auth/login")
+      .send({
+        email: "person@example.com",
+        password: "A wrong password",
+      });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      status: "error",
+      code: "INVALID_CREDENTIALS",
+      message: "Invalid email or password",
+    });
+  });
+});
+
+describe("session routes", () => {
+  const registrationService: AuthService = {
+    registerUser: async () => publicUser,
+  };
+
+  test("returns the current user for a valid session cookie", async () => {
+    let receivedToken: string | undefined;
+    const sessionService = makeSessionService({
+      getCurrentUser: async (token) => {
+        receivedToken = token;
+        return publicUser;
+      },
+    });
+
+    const response = await request(
+      makeApp(registrationService, { sessionService }),
+    )
+      .get("/api/auth/me")
+      .set("Cookie", `${SESSION_COOKIE_NAME}=session-token`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: "ok",
+      data: {
+        user: {
+          ...publicUser,
+          createdAt: "2026-09-03T00:00:00.000Z",
+        },
+      },
+    });
+    expect(receivedToken).toBe("session-token");
+  });
+
+  test("rejects a request without a session", async () => {
+    const getCurrentUser = vi.fn(async () => publicUser);
+    const sessionService = makeSessionService({ getCurrentUser });
+
+    const response = await request(
+      makeApp(registrationService, { sessionService }),
+    ).get("/api/auth/me");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      status: "error",
+      code: "AUTHENTICATION_REQUIRED",
+      message: "Authentication required",
+    });
+    expect(getCurrentUser).not.toHaveBeenCalled();
+  });
+
+  test("revokes the session and clears the cookie on logout", async () => {
+    let revokedToken: string | undefined;
+    const sessionService = makeSessionService({
+      revokeSession: async (token) => {
+        revokedToken = token;
+      },
+    });
+
+    const response = await request(
+      makeApp(registrationService, { sessionService }),
+    )
+      .post("/api/auth/logout")
+      .set("Cookie", `${SESSION_COOKIE_NAME}=session-token`);
+
+    expect(response.status).toBe(204);
+    expect(response.text).toBe("");
+    expect(revokedToken).toBe("session-token");
+    expect(response.headers["set-cookie"]).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(`${SESSION_COOKIE_NAME}=;`),
+      ]),
+    );
   });
 });

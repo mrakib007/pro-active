@@ -336,8 +336,292 @@ lets a client attach the email error to the email field, while `formErrors`
 handles problems that do not belong to one field. The stable error `code` is
 for program logic; the messages are for people.
 
-## Next experiment
+## Transition to Phase 2B
 
-The next authentication slice can add sessions or login after this user-only
-registration behavior has been reviewed. No workspace or role behavior is
-part of this slice.
+The signup slice intentionally stopped before sessions and login so those
+concepts could be designed separately. Phase 2B begins below. No workspace or
+role behavior is part of the signup slice.
+
+## Phase 2B: Login and database-backed sessions
+
+This section extends the same authentication note. Signup creates a durable
+identity; login proves control of that identity and creates authenticated state
+for later requests. Authentication answers “who is this?” Authorization will
+later answer “what may this user do in this workspace?” They are separate
+concepts.
+
+### Learning loop
+
+```text
+Concept -> Design -> Test first -> Build -> Verify -> Document -> Reflect
+```
+
+The implementation is split into three vertical slices:
+
+1. credential verification;
+2. session creation and persistence; and
+3. authenticated requests and logout.
+
+### Design decision: database-backed opaque sessions first
+
+The project will learn JWT access and refresh tokens later as a comparison.
+The first usable login uses a random opaque session token in an `HttpOnly`
+cookie, while PostgreSQL stores only a SHA-256 hash of that token.
+
+This choice makes revocation, expiry, multiple devices, indexed lookups, and
+database consistency visible. A stateless JWT can be useful at scale, but
+revocation and refresh-token policy would hide important fundamentals if it
+were the first implementation.
+
+### Login contract
+
+`POST /api/auth/login` accepts only:
+
+```json
+{
+  "email": "person@example.com",
+  "password": "A secure password"
+}
+```
+
+The request is strict and normalizes the email in the same way as signup. A
+successful request returns `200` with the public user projection and sets a
+seven-day session cookie. The session token is never returned in JSON.
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "user": {
+      "id": "...",
+      "fullName": "Rakib Hasan",
+      "email": "person@example.com",
+      "createdAt": "..."
+    }
+  }
+}
+```
+
+Malformed input returns `400 VALIDATION_ERROR`. Both an unknown email and an
+incorrect password return the same `401 INVALID_CREDENTIALS` response:
+
+```json
+{
+  "status": "error",
+  "code": "INVALID_CREDENTIALS",
+  "message": "Invalid email or password"
+}
+```
+
+This avoids revealing whether an email is registered. Login does not accept a
+role, workspace, or client-selected authorization value.
+
+### Login request flow
+
+```text
+HTTP request
+  -> strict schema validation and email normalization
+  -> users.email unique-index lookup
+  -> Argon2 verification in application code
+  -> random session token generation
+  -> SHA-256 token hash persisted in sessions
+  -> HttpOnly cookie returned to the client
+  -> public user response
+```
+
+The password is not searched in PostgreSQL. `users.email` is a unique lookup
+key, but an Argon2 password hash must be verified with the password library.
+There is intentionally no password index.
+
+### Session model
+
+The `sessions` table contains:
+
+| Column       | Problem it solves                                                   |
+| ------------ | ------------------------------------------------------------------- |
+| `id`         | Gives the session a stable internal identity.                       |
+| `user_id`    | Relates the session to the account and supports session management. |
+| `token_hash` | Looks up a session without storing the raw browser token.           |
+| `expires_at` | Makes an old session invalid even if logout is never requested.     |
+| `revoked_at` | Records explicit logout or forced revocation.                       |
+| `created_at` | Supports auditing and future active-session screens.                |
+
+The database has a unique index on `token_hash`, an index on `user_id`, and an
+index on `expires_at`. The session repository only returns a session when its
+token hash matches, `revoked_at` is null, and `expires_at` is in the future.
+Expired rows remain invalid until a later cleanup job removes them.
+
+### Cookie design
+
+The cookie is named `pro_active_session` and is configured as:
+
+- `HttpOnly`, so browser JavaScript cannot read the session token;
+- `SameSite=Lax`, which reduces cross-site request risk for this local flow;
+- `Path=/`, so it applies to the application;
+- `Secure=false` in local HTTP development and `Secure=true` in production; and
+- a seven-day maximum age.
+
+The default Pino logger redacts cookie and authorization headers. The raw
+session token must not appear in response JSON, database rows, logs, or error
+messages.
+
+### Authenticated request flow
+
+```text
+request cookie
+  -> cookie-parser
+  -> hash the opaque token
+  -> indexed sessions.token_hash lookup
+  -> reject missing, revoked, or expired session
+  -> attach public user to request context
+  -> protected controller
+```
+
+`GET /api/auth/me` demonstrates the protected-request boundary. `POST
+/api/auth/logout` revokes the current session and clears the cookie. Logout is
+idempotent when no cookie is present.
+
+### File responsibilities
+
+| File                    | Responsibility                                                         |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `auth.schemas.ts`       | Defines strict login input and email normalization.                    |
+| `auth.service.ts`       | Looks up the user, verifies Argon2, and requests session creation.     |
+| `auth.repository.ts`    | Finds users by the unique email index and persists signup records.     |
+| `session.repository.ts` | Reads, creates, and revokes session rows through Prisma.               |
+| `session.service.ts`    | Generates tokens, hashes them, calculates expiry, and maps safe users. |
+| `auth.controller.ts`    | Maps login, current-user, and logout behavior to HTTP and cookies.     |
+| `auth.middleware.ts`    | Converts a valid session cookie into authenticated request context.    |
+| `auth.routes.ts`        | Maps `/login`, `/me`, and `/logout` to the correct boundary.           |
+| `app.ts`                | Installs cookie parsing and injects auth dependencies into the router. |
+| `logger.ts`             | Redacts cookie and authorization headers from request logs.            |
+| `prisma/schema.prisma`  | Defines the `Session` relation, constraints, and indexes.              |
+
+### Tasks completed
+
+- [x] Add strict login validation and normalized email input.
+- [x] Add a user lookup by email without adding a password query or index.
+- [x] Add an injectable password-verifier capability using `argon2.verify`.
+- [x] Return one generic invalid-credentials error for missing and wrong users.
+- [x] Add the `sessions` table and apply the Prisma migration.
+- [x] Generate random opaque tokens and persist only SHA-256 hashes.
+- [x] Set and clear the protected session cookie.
+- [x] Add session expiry and revocation checks.
+- [x] Add authentication middleware and `GET /api/auth/me`.
+- [x] Add idempotent `POST /api/auth/logout`.
+- [x] Redact cookies and authorization headers from default request logs.
+- [x] Add service, route, session-service, and PostgreSQL integration tests.
+
+### What we learned
+
+#### 1. Login is not the same as returning a user
+
+Returning a user from a password check would not make the next HTTP request
+authenticated. The client needs a credential that the server can validate
+again. The session cookie is that credential, and the session table is the
+server-side source of truth for whether it remains valid.
+
+#### 2. The email index and password verifier solve different problems
+
+The unique `users.email` index makes account lookup fast and enforces one
+account per normalized email. Argon2 verification proves knowledge of the
+password. Querying by password would be both conceptually wrong and unsafe.
+
+#### 3. A session token is not a password
+
+The session token is a high-entropy, random capability that is short-lived and
+revocable. The password is a human-chosen secret requiring a slow password
+hash. A SHA-256 lookup hash is appropriate for the random session token because
+the server needs fast indexed lookup and the token has enough randomness; the
+password remains protected by Argon2.
+
+#### 4. Database sessions make revocation explicit
+
+Logout updates `revoked_at`. A later request with the same cookie fails the
+session predicate. A user can have multiple rows for multiple devices; logging
+in on one device does not overwrite another device's session.
+
+#### 5. The first login write does not require a transaction
+
+Credential verification is a read followed by one session insert. There is no
+second write that must commit atomically yet. If a future login also records an
+audit event or updates `last_login_at`, we will revisit the transaction
+boundary and test partial-failure behavior.
+
+#### 6. Redis is intentionally not involved yet
+
+PostgreSQL is the source of truth for account and session validity in this
+phase. Redis will be introduced for login rate limiting, short-lived cache
+experiments, and worker coordination after the baseline behavior is measured.
+Caching session validity before understanding revocation would create stale
+authentication behavior.
+
+### Reflect: explain it back
+
+#### 1. Why do we find the user by email instead of password?
+
+**Answer:** The normalized email has a unique database index, so PostgreSQL can
+find one account efficiently. The password is not stored as searchable text;
+the Argon2 library verifies the submitted password against the stored hash.
+
+#### 2. Why does login need a `sessions` table?
+
+**Answer:** The table gives the server a durable source of truth for expiry and
+revocation. It also allows one user to have separate sessions on several
+devices. A response containing only a user object would not authenticate a
+future request.
+
+#### 3. Why store a token hash instead of the raw cookie token?
+
+**Answer:** If the database is exposed, a raw token could immediately be used
+as the user. A hash lets the server validate the presented token while keeping
+the database value from being directly reusable. The raw token exists only in
+the cookie and short-lived application memory during login.
+
+#### 4. Why do unknown email and wrong password return the same error?
+
+**Answer:** Different messages or status codes could let an attacker discover
+which emails have accounts. One generic `401 INVALID_CREDENTIALS` response
+reveals less information while still telling a legitimate user that login
+failed.
+
+#### 5. Why does `GET /me` use middleware?
+
+**Answer:** Session validation is a cross-cutting boundary needed by many
+future protected routes. Middleware performs it once and attaches trusted
+identity context, so each controller can focus on its own business behavior.
+
+#### 6. Why is logout implemented by revocation rather than only deleting a row?
+
+**Answer:** Revocation preserves a record that the session existed and makes
+the state transition explicit. It supports auditing and forced logout later.
+An expired or revoked row can be cleaned up separately by a scheduled job.
+
+#### 7. Why is `role` still absent from login?
+
+**Answer:** Login authenticates global identity. A role describes permissions in
+a particular workspace and belongs to a future membership relationship. The
+server will derive authorization from trusted membership data after login.
+
+#### 8. What remains before this is production-grade authentication?
+
+**Answer:** We still need measured login rate limiting, CSRF protection for
+cookie-based state changes, password reset and email verification, session
+management, expired-session cleanup, security monitoring, and a comparison with
+JWT access/refresh tokens. Each will be a separate learning slice.
+
+### Verification evidence
+
+The implementation has 33 passing backend tests across 9 test files, including
+PostgreSQL session persistence and revocation tests. TypeScript, ESLint, and
+Prettier checks pass. A live request sequence against the local database also
+passed: register `201`, login `200`, `/me` `200`, logout `204`, and `/me` after
+logout `401`. The database read confirmed one 64-character token hash and a
+revoked session row; the temporary verification user was then removed.
+
+### Next experiment
+
+The next authentication slice will measure login rate limiting with Redis and
+design CSRF protection for cookie-based state changes. Password reset, email
+verification, session management, and a JWT comparison will follow as
+separate concepts.
