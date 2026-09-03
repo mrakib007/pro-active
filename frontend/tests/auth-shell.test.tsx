@@ -76,4 +76,22 @@ describe("AuthShell", () => {
     expect(story).toHaveClass("lg:h-full", "lg:min-h-0");
     expect(formPanel).toHaveClass("lg:h-full", "lg:min-h-0");
   });
+
+  test("describes the implemented session-backed authentication flow", () => {
+    render(
+      <AuthShell
+        description="A description"
+        eyebrow="Welcome"
+        footer={<span>Footer</span>}
+        title="A title"
+      >
+        <div>Form</div>
+      </AuthShell>,
+    );
+
+    expect(screen.getByText(/session-backed sign in/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/authentication is not connected/i),
+    ).not.toBeInTheDocument();
+  });
 });

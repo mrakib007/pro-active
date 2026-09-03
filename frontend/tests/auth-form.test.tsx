@@ -4,6 +4,14 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { AuthForm } from "../components/auth/auth-form";
 import { StoreProvider } from "../components/providers/store-provider";
 
+const router = vi.hoisted(() => ({
+  replace: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+}));
+
 function renderAuthForm(mode: "login" | "signup") {
   return render(
     <StoreProvider>
@@ -14,6 +22,7 @@ function renderAuthForm(mode: "login" | "signup") {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  router.replace.mockReset();
 });
 
 describe("AuthForm", () => {
@@ -35,17 +44,48 @@ describe("AuthForm", () => {
     );
   });
 
-  test("shows an honest local-only status after a valid login submission", async () => {
+  test("logs in through the backend and navigates to the workspace", async () => {
     const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "ok",
+          data: {
+            user: {
+              id: "user-1",
+              fullName: "Rakib Hasan",
+              email: "person@example.com",
+              createdAt: "2026-09-03T00:00:00.000Z",
+            },
+          },
+        }),
+        {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
     renderAuthForm("login");
 
     await user.type(screen.getByLabelText(/email/i), "person@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "A secure password");
+    expect(
+      screen.getByText(/keep me signed in for 7 days/i),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /backend.*not connected/i,
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/workspace"),
     );
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(request.method).toBe("POST");
+    expect(await request.clone().json()).toEqual({
+      email: "person@example.com",
+      password: "A secure password",
+    });
   });
 
   test("rejects mismatched signup passwords without submitting", async () => {

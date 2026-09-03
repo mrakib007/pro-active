@@ -73,6 +73,57 @@ describe("frontend API layer", () => {
     });
   });
 
+  test("logs in, reads the current user, and logs out through the backend contract", async () => {
+    const user = {
+      id: "user-1",
+      fullName: "Rakib Hasan",
+      email: "rakib@example.com",
+      createdAt: "2026-09-03T00:00:00.000Z",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ status: "ok", data: { user } }))
+      .mockResolvedValueOnce(jsonResponse({ status: "ok", data: { user } }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const store = createTestStore();
+    const loginResult = await store.dispatch(
+      authApi.endpoints.login.initiate({
+        email: "rakib@example.com",
+        password: "A secure password",
+      }),
+    ).unwrap();
+    const currentUserSubscription = store.dispatch(
+      authApi.endpoints.getCurrentUser.initiate(),
+    );
+    const currentUserResult = await currentUserSubscription.unwrap();
+    await store.dispatch(authApi.endpoints.logout.initiate()).unwrap();
+    currentUserSubscription.unsubscribe();
+
+    expect(loginResult.data.user.email).toBe("rakib@example.com");
+    expect(currentUserResult.data.user.id).toBe("user-1");
+
+    const requests = fetchMock.mock.calls.map(([input]) => input as Request);
+    expect(new URL(requests[0].url).pathname).toBe(
+      "/api/backend/auth/login",
+    );
+    expect(requests[0].method).toBe("POST");
+    expect(requests[0].credentials).toBe("include");
+    expect(await requests[0].clone().json()).toEqual({
+      email: "rakib@example.com",
+      password: "A secure password",
+    });
+    expect(new URL(requests[1].url).pathname).toBe(
+      "/api/backend/auth/me",
+    );
+    expect(requests[1].method).toBe("GET");
+    expect(new URL(requests[2].url).pathname).toBe(
+      "/api/backend/auth/logout",
+    );
+    expect(requests[2].method).toBe("POST");
+  });
+
   test("builds generic CRUD requests from resource arguments", async () => {
     const fetchMock = vi
       .fn()

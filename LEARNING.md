@@ -50,6 +50,10 @@ backend/src/
 
 We are not using pure textbook MVC, global folders that scatter each feature, or microservices at this stage. The structure will be introduced deliberately as each learning phase requires it; we will not create empty folders for every future feature now.
 
+## Frontend route convention
+
+For a simple route with no reuse requirement, keep the page implementation directly in its `app/<route>/page.tsx` file. Do not create a component only to import it immediately into the page. Extract a component when the UI is reused, the page becomes meaningfully easier to understand when split, or an independent boundary is genuinely useful.
+
 ## Living concept notes
 
 Yes: each major concept should have one living Markdown note that grows as we work through it. For example, the authentication note should be updated after signup, password hashing, login, sessions/tokens, authorization, logout, security tests, and failure experiments—not replaced with a separate note for every tiny task.

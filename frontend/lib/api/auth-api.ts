@@ -20,6 +20,13 @@ export type RegisterResponse = {
   };
 };
 
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+export type LoginResponse = RegisterResponse;
+
 export type ApiErrorResponse = {
   status: "error";
   code: string;
@@ -39,7 +46,30 @@ export const authApi = baseApi.injectEndpoints({
         url: "auth/register",
       }),
     }),
+    login: build.mutation<LoginResponse, LoginRequest>({
+      invalidatesTags: ["User"],
+      query: (body) => ({
+        body,
+        method: "POST",
+        url: "auth/login",
+      }),
+    }),
+    getCurrentUser: build.query<LoginResponse, void>({
+      providesTags: ["User"],
+      query: () => "auth/me",
+    }),
+    logout: build.mutation<void, void>({
+      query: () => ({
+        method: "POST",
+        url: "auth/logout",
+      }),
+    }),
   }),
 });
 
-export const { useRegisterMutation } = authApi;
+export const {
+  useGetCurrentUserQuery,
+  useLoginMutation,
+  useLogoutMutation,
+  useRegisterMutation,
+} = authApi;

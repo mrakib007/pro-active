@@ -215,7 +215,7 @@ export function AuthShell({
 
             <div className="mt-7 text-center text-sm text-[var(--muted)]">{footer}</div>
             <p className="mt-12 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]/70">
-              Local learning build · Authentication is not connected
+              Local learning build · Session-backed sign in
             </p>
           </div>
         </section>
