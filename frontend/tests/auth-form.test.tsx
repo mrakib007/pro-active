@@ -1,12 +1,25 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { AuthForm } from "../components/auth/auth-form";
+import { StoreProvider } from "../components/providers/store-provider";
+
+function renderAuthForm(mode: "login" | "signup") {
+  return render(
+    <StoreProvider>
+      <AuthForm mode={mode} />
+    </StoreProvider>,
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("AuthForm", () => {
   test("shows field-level validation after submitting an empty login", async () => {
     const user = userEvent.setup();
-    render(<AuthForm mode="login" />);
+    renderAuthForm("login");
 
     await user.click(screen.getByRole("button", { name: /continue/i }));
 
@@ -24,7 +37,7 @@ describe("AuthForm", () => {
 
   test("shows an honest local-only status after a valid login submission", async () => {
     const user = userEvent.setup();
-    render(<AuthForm mode="login" />);
+    renderAuthForm("login");
 
     await user.type(screen.getByLabelText(/email/i), "person@example.com");
     await user.type(screen.getByLabelText(/^password$/i), "A secure password");
@@ -37,7 +50,7 @@ describe("AuthForm", () => {
 
   test("rejects mismatched signup passwords without submitting", async () => {
     const user = userEvent.setup();
-    render(<AuthForm mode="signup" />);
+    renderAuthForm("signup");
 
     await user.type(screen.getByLabelText(/full name/i), "Rakib Hasan");
     await user.type(screen.getByLabelText(/work email/i), "person@example.com");
@@ -57,11 +70,61 @@ describe("AuthForm", () => {
 
   test("toggles password visibility", async () => {
     const user = userEvent.setup();
-    render(<AuthForm mode="login" />);
+    renderAuthForm("login");
     const password = screen.getByLabelText(/^password$/i);
 
     expect(password).toHaveAttribute("type", "password");
     await user.click(screen.getByRole("button", { name: /show password/i }));
     expect(password).toHaveAttribute("type", "text");
+  });
+
+  test("submits signup data to the backend and shows success", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: "ok",
+          data: {
+            user: {
+              id: "user-1",
+              fullName: "Rakib Hasan",
+              email: "rakib@example.com",
+              createdAt: "2026-09-03T00:00:00.000Z",
+            },
+          },
+        }),
+        {
+          headers: { "Content-Type": "application/json" },
+          status: 201,
+        },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderAuthForm("signup");
+
+    await user.type(screen.getByLabelText(/full name/i), "Rakib Hasan");
+    await user.type(screen.getByLabelText(/work email/i), "rakib@example.com");
+    await user.type(screen.getByLabelText(/^password$/i), "A secure password");
+    await user.type(
+      screen.getByLabelText(/confirm password/i),
+      "A secure password",
+    );
+    await user.click(screen.getByLabelText(/workspace terms/i));
+    await user.click(
+      screen.getByRole("button", { name: /create workspace/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/account created/i),
+    );
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(request.method).toBe("POST");
+    expect(await request.clone().json()).toEqual({
+      fullName: "Rakib Hasan",
+      email: "rakib@example.com",
+      password: "A secure password",
+    });
   });
 });

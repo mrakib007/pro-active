@@ -3,6 +3,10 @@
 import { Form, Formik, type FormikErrors } from "formik";
 import { useState } from "react";
 import {
+  useRegisterMutation,
+  type ApiErrorResponse,
+} from "../../lib/api/auth-api";
+import {
   CheckboxField,
   PasswordField,
   TextField,
@@ -15,7 +19,7 @@ type AuthFormProps = {
 };
 
 type AuthValues = {
-  name: string;
+  fullName: string;
   email: string;
   password: string;
   passwordConfirmation: string;
@@ -25,7 +29,7 @@ type AuthValues = {
 
 const initialValues: AuthValues = {
   email: "",
-  name: "",
+  fullName: "",
   password: "",
   passwordConfirmation: "",
   remember: false,
@@ -38,8 +42,8 @@ function validateAuthValues(
 ): FormikErrors<AuthValues> {
   const errors: FormikErrors<AuthValues> = {};
 
-  if (isSignup && !values.name.trim()) {
-    errors.name = "Enter your full name to create your workspace.";
+  if (isSignup && !values.fullName.trim()) {
+    errors.fullName = "Enter your full name to create your workspace.";
   }
 
   if (!values.email.trim()) {
@@ -65,14 +69,88 @@ function validateAuthValues(
   return errors;
 }
 
+function isAuthFormField(field: string): field is keyof AuthValues {
+  return [
+    "fullName",
+    "email",
+    "password",
+    "passwordConfirmation",
+    "remember",
+    "terms",
+  ].includes(field);
+}
+
+function readApiError(error: unknown): ApiErrorResponse | null {
+  if (typeof error !== "object" || error === null || !("data" in error)) {
+    return null;
+  }
+
+  const data = error.data;
+
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("code" in data) ||
+    !("message" in data) ||
+    typeof data.code !== "string" ||
+    typeof data.message !== "string"
+  ) {
+    return null;
+  }
+
+  return data as ApiErrorResponse;
+}
+
 export function AuthForm({ mode }: AuthFormProps) {
   const isSignup = mode === "signup";
   const [notice, setNotice] = useState<string | null>(null);
+  const [registerUser, { isLoading: isRegistering }] = useRegisterMutation();
 
   return (
     <Formik<AuthValues>
       initialValues={initialValues}
-      onSubmit={() => setNotice("Backend authentication is not connected yet.")}
+      onSubmit={async (values, { setErrors, setSubmitting }) => {
+        setNotice(null);
+
+        if (!isSignup) {
+          setNotice("Backend authentication is not connected yet.");
+          setSubmitting(false);
+          return;
+        }
+
+        try {
+          const response = await registerUser({
+            email: values.email,
+            fullName: values.fullName,
+            password: values.password,
+          }).unwrap();
+
+          setNotice(
+            `Account created for ${response.data.user.email}. You can sign in once sessions are connected.`,
+          );
+        } catch (error: unknown) {
+          const apiError = readApiError(error);
+          const fieldErrors = apiError?.details?.fieldErrors;
+
+          if (fieldErrors) {
+            const formErrors: FormikErrors<AuthValues> = {};
+
+            for (const [field, messages] of Object.entries(fieldErrors)) {
+              const message = messages[0];
+
+              if (message && isAuthFormField(field)) {
+                formErrors[field] = message;
+              }
+            }
+
+            setErrors(formErrors);
+          }
+
+          setNotice(apiError?.message ?? "Unable to create your account right now.");
+        } finally {
+          setSubmitting(false);
+        }
+      }}
       validate={(values) => validateAuthValues(values, isSignup)}
       validateOnChange={false}
     >
@@ -86,7 +164,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             <TextField
               autoComplete="name"
               label="Full name"
-              name="name"
+              name="fullName"
               placeholder="e.g. Rakib Hasan"
             />
           ) : null}
@@ -158,7 +236,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
           <button
             className="group flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-[var(--ink)] px-5 text-sm font-semibold text-white shadow-[0_12px_24px_-16px_rgba(24,33,27,0.85)] transition hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-soft)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isRegistering}
             type="submit"
           >
             {isSignup ? "Create workspace" : "Continue"}
