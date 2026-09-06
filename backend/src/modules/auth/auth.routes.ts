@@ -8,6 +8,10 @@ import {
 import { createAuthenticationMiddleware } from "./auth.middleware.js";
 import { createAuthService } from "./auth.service.js";
 import { createSessionService } from "./session.service.js";
+import {
+  createLoginRateLimiter,
+  type LoginRateLimiter,
+} from "./login-rate-limiter.js";
 import type {
   AuthService,
   LoginService,
@@ -18,16 +22,18 @@ const defaultSessionService = createSessionService();
 const defaultAuthService = createAuthService({
   sessionService: defaultSessionService,
 });
+const defaultLoginRateLimiter = createLoginRateLimiter();
 
 export function createAuthRouter(
   registrationService: AuthService = defaultAuthService,
   loginService: LoginService = defaultAuthService,
   sessionService: SessionService = defaultSessionService,
+  loginRateLimiter: LoginRateLimiter = defaultLoginRateLimiter,
 ): ExpressRouter {
   const router = Router();
 
   router.post("/register", createRegisterController(registrationService));
-  router.post("/login", createLoginController(loginService));
+  router.post("/login", createLoginController(loginService, loginRateLimiter));
   router.get(
     "/me",
     createAuthenticationMiddleware(sessionService),

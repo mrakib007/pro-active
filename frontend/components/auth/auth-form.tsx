@@ -38,22 +38,42 @@ const initialValues: AuthValues = {
   terms: false,
 };
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_FULL_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 320;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 128;
+
 function validateAuthValues(
   values: AuthValues,
   isSignup: boolean,
 ): FormikErrors<AuthValues> {
   const errors: FormikErrors<AuthValues> = {};
+  const fullName = values.fullName.trim();
+  const email = values.email.trim();
 
-  if (isSignup && !values.fullName.trim()) {
-    errors.fullName = "Enter your full name to create your workspace.";
+  if (isSignup) {
+    if (!fullName) {
+      errors.fullName = "Enter your full name to create your workspace.";
+    } else if (fullName.length > MAX_FULL_NAME_LENGTH) {
+      errors.fullName = "Full name is too long.";
+    }
   }
 
-  if (!values.email.trim()) {
+  if (!email) {
     errors.email = "Enter your email address.";
+  } else if (email.length > MAX_EMAIL_LENGTH) {
+    errors.email = "Email address is too long.";
+  } else if (!emailPattern.test(email)) {
+    errors.email = "Enter a valid email address.";
   }
 
   if (!values.password) {
     errors.password = "Enter your password.";
+  } else if (values.password.length < MIN_PASSWORD_LENGTH) {
+    errors.password = "Password must be at least eight characters.";
+  } else if (values.password.length > MAX_PASSWORD_LENGTH) {
+    errors.password = "Password must be at most 128 characters.";
   }
 
   if (isSignup) {
@@ -267,7 +287,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           ) : null}
 
           <button
-            className="group flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-[var(--ink)] px-5 text-sm font-semibold text-white shadow-[0_12px_24px_-16px_rgba(24,33,27,0.85)] transition hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-soft)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+            className="group flex h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-2xl bg-[var(--ink)] px-5 text-sm font-semibold text-white shadow-[0_12px_24px_-16px_rgba(24,33,27,0.85)] transition hover:-translate-y-0.5 hover:bg-[var(--accent-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent-soft)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
             disabled={isSubmitting || isLoggingIn || isRegistering}
             type="submit"
           >

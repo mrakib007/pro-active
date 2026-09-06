@@ -9,6 +9,7 @@ import {
   checkDatabase,
   disconnectDatabase,
 } from "./infrastructure/database/prisma.js";
+import { disconnectRedis } from "./infrastructure/cache/redis.js";
 import { logger } from "./logger.js";
 
 export interface ServerOptions {
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
 
     void closeServer(runningServer)
       .then(() => disconnectDatabase())
+      .then(() => disconnectRedis())
       .then(() => {
         logger.info("server closed");
       })

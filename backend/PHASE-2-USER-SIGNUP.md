@@ -548,13 +548,13 @@ second write that must commit atomically yet. If a future login also records an
 audit event or updates `last_login_at`, we will revisit the transaction
 boundary and test partial-failure behavior.
 
-#### 6. Redis is intentionally not involved yet
+#### 6. Redis is not used for session validity
 
 PostgreSQL is the source of truth for account and session validity in this
-phase. Redis will be introduced for login rate limiting, short-lived cache
-experiments, and worker coordination after the baseline behavior is measured.
-Caching session validity before understanding revocation would create stale
-authentication behavior.
+phase. Redis now has one deliberately narrow responsibility: the login rate
+limiter. It is not used to cache session validity, because caching that state
+before understanding revocation would create stale authentication behavior.
+Short-lived cache experiments and worker coordination remain future concepts.
 
 ### Reflect: explain it back
 
@@ -605,12 +605,13 @@ server will derive authorization from trusted membership data after login.
 
 #### 8. What remains before this is production-grade authentication?
 
-**Answer:** We still need measured login rate limiting, CSRF protection for
-cookie-based state changes, password reset and email verification, session
-management, expired-session cleanup, security monitoring, and a comparison with
-JWT access/refresh tokens. Each will be a separate learning slice.
+**Answer:** Login rate limiting is now covered by Phase 2C. We still need CSRF
+protection for cookie-based state changes, password reset and email
+verification, session management, expired-session cleanup, security monitoring,
+and a comparison with JWT access/refresh tokens. Each will be a separate
+learning slice.
 
-### Verification evidence
+### Phase 2B verification evidence
 
 The implementation has 33 passing backend tests across 9 test files, including
 PostgreSQL session persistence and revocation tests. TypeScript, ESLint, and
@@ -619,9 +620,82 @@ passed: register `201`, login `200`, `/me` `200`, logout `204`, and `/me` after
 logout `401`. The database read confirmed one 64-character token hash and a
 revoked session row; the temporary verification user was then removed.
 
+## Phase 2C: Login rate limiting
+
+### What problem does this solve?
+
+Password verification is intentionally expensive because Argon2 slows down
+guessing. That protects stored passwords, but it does not stop a client from
+sending many guesses to the login endpoint. Login rate limiting adds a shared
+server-side budget so multiple backend processes can enforce the same policy.
+
+### Design decisions
+
+- Use Redis as the shared counter store; process-local memory would reset on
+  restart and would not coordinate across backend instances.
+- Count attempts by the normalized email and client IP. The email prevents a
+  single client from using one IP budget to attack every account, while the IP
+  prevents a single account key from being globally locked by one attacker.
+- Allow five login attempts per key during a sixty-second window.
+- Return `429 AUTH_RATE_LIMITED` with a `Retry-After` header when the budget is
+  exhausted.
+- Fail closed when Redis cannot be reached by returning a `503` response with
+  code `RATE_LIMITER_UNAVAILABLE`; silently allowing unprotected login attempts
+  would hide a security dependency failure.
+- Inject the limiter at the application boundary so route tests can prove the
+  HTTP contract without requiring Redis.
+
+### Login request flow
+
+```text
+HTTP request
+  -> strict schema validation and email normalization
+  -> Redis-backed login budget consumption
+  -> Argon2 verification and session creation
+  -> public user response and session cookie
+```
+
+Invalid request shapes are rejected before the limiter because they are not
+login attempts with a meaningful normalized identity. Valid attempts consume a
+point before password verification, so both successful and unsuccessful
+credential guesses are bounded.
+
+### File responsibilities
+
+| File                                         | Responsibility                                                                            |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `src/config.ts`                              | Validates the `REDIS_URL` runtime setting.                                                |
+| `src/infrastructure/cache/redis.ts`          | Owns the lazy Redis client, error logging, health probe, and shutdown.                    |
+| `src/modules/auth/login-rate-limiter.ts`     | Adapts `rate-limiter-flexible` to the auth domain and maps store failures to safe errors. |
+| `src/modules/auth/auth.controller.ts`        | Consumes the budget and maps rate-limit outcomes to `429` or `503` responses.             |
+| `src/app.ts`                                 | Injects the limiter into the auth router.                                                 |
+| `src/server.ts`                              | Disconnects Redis during graceful shutdown.                                               |
+| `tests/phase-two/login-rate-limiter.test.ts` | Proves key construction, allowed attempts, exhaustion, and store failure behavior.        |
+| `tests/phase-two/auth-routes.test.ts`        | Proves the public HTTP error and `Retry-After` contracts.                                 |
+
+### Tasks completed
+
+- [x] Validate `REDIS_URL` with the existing startup configuration parser.
+- [x] Add a reusable lazy Redis client with bounded retry behavior.
+- [x] Add an injectable login limiter backed by `RateLimiterRedis`.
+- [x] Use a normalized-email and IP key for valid login attempts.
+- [x] Return a stable `429` response and retry delay when the budget is exhausted.
+- [x] Return a stable `503` response when Redis is unavailable.
+- [x] Disconnect Redis during direct-run server shutdown.
+- [x] Add unit and route tests without making the test suite depend on Redis.
+
+### Verification evidence
+
+The backend now has 40 passing tests across 10 test files. TypeScript,
+ESLint, Prettier, the production build, and the PostgreSQL connection check all
+pass. A direct probe of the production limiter confirmed that the local machine
+does not currently have a Redis service listening on `localhost:6379`; the
+limiter logged the connection failure and returned
+`LoginRateLimiterUnavailableError`, which maps to the intended `503` response.
+
 ### Next experiment
 
-The next authentication slice will measure login rate limiting with Redis and
-design CSRF protection for cookie-based state changes. Password reset, email
-verification, session management, and a JWT comparison will follow as
-separate concepts.
+The next authentication slice will design CSRF protection for cookie-based
+state changes. After that, the project can compare password reset, email
+verification, session management, and JWT access/refresh tokens as separate
+concepts.

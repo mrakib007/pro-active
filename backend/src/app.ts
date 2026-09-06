@@ -11,10 +11,12 @@ import type {
   LoginService,
   SessionService,
 } from "./modules/auth/auth.types.js";
+import type { LoginRateLimiter } from "./modules/auth/login-rate-limiter.js";
 
 export interface AppOptions {
   logger: Logger;
   loginService?: LoginService;
+  loginRateLimiter?: LoginRateLimiter;
   readinessCheck?: () => Promise<void>;
   registrationService?: AuthService;
   sessionService?: SessionService;
@@ -24,6 +26,7 @@ export interface AppOptions {
 export function createApp({
   logger,
   loginService,
+  loginRateLimiter,
   readinessCheck = async () => undefined,
   registrationService,
   sessionService,
@@ -57,7 +60,12 @@ export function createApp({
 
   app.use(
     "/api/auth",
-    createAuthRouter(registrationService, loginService, sessionService),
+    createAuthRouter(
+      registrationService,
+      loginService,
+      sessionService,
+      loginRateLimiter,
+    ),
   );
 
   app.use((_request, _response, next) => {

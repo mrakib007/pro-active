@@ -10,6 +10,11 @@ import {
   sessionCookieOptions,
 } from "./session.service.js";
 import { loginUserSchema, registerUserSchema } from "./auth.schemas.js";
+import {
+  LoginRateLimitExceededError,
+  LoginRateLimiterUnavailableError,
+  type LoginRateLimiter,
+} from "./login-rate-limiter.js";
 import type {
   AuthService,
   LoginService,
@@ -60,6 +65,7 @@ export function createRegisterController(
 
 export function createLoginController(
   loginService: LoginService,
+  loginRateLimiter: LoginRateLimiter,
 ): RequestHandler {
   return async (request, response, next) => {
     const parsedInput = loginUserSchema.safeParse(request.body);
@@ -77,6 +83,10 @@ export function createLoginController(
     }
 
     try {
+      await loginRateLimiter.consume({
+        email: parsedInput.data.email,
+        ip: request.ip ?? "unknown",
+      });
       const loginResult = await loginService.loginUser(parsedInput.data);
 
       response.cookie(
@@ -89,6 +99,29 @@ export function createLoginController(
         data: { user: loginResult.user },
       });
     } catch (error: unknown) {
+      if (error instanceof LoginRateLimitExceededError) {
+        response.setHeader("Retry-After", String(error.retryAfterSeconds));
+        next(
+          new AppError(
+            429,
+            "AUTH_RATE_LIMITED",
+            "Too many login attempts. Try again later",
+          ),
+        );
+        return;
+      }
+
+      if (error instanceof LoginRateLimiterUnavailableError) {
+        next(
+          new AppError(
+            503,
+            "RATE_LIMITER_UNAVAILABLE",
+            "Login protection is temporarily unavailable",
+          ),
+        );
+        return;
+      }
+
       if (error instanceof InvalidCredentialsError) {
         next(
           new AppError(401, "INVALID_CREDENTIALS", "Invalid email or password"),

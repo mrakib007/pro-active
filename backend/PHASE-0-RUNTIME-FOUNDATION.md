@@ -24,7 +24,7 @@ client
 
 ## Configuration
 
-`loadConfig()` parses environment values with Zod at startup. Defaults are explicit for local development: `NODE_ENV=development`, `HOST=127.0.0.1`, `PORT=3000`, and `LOG_LEVEL=info`.
+`loadConfig()` parses environment values with Zod at startup. Defaults are explicit for local development: `NODE_ENV=development`, `HOST=127.0.0.1`, `PORT=3001`, and `LOG_LEVEL=info`.
 
 The important rule is fail-fast configuration. A value such as port `70000` is rejected before the server starts. This prevents a process from running with a configuration that will fail only when traffic arrives. The parser accepts an environment object as an argument so tests do not need to mutate the real process environment.
 
