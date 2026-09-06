@@ -10,6 +10,7 @@ import {
 } from "../../lib/api/auth-api";
 import { baseApi } from "../../lib/api/base-api";
 import type { AppDispatch } from "../../lib/store";
+import { WorkspaceCreator } from "../../components/workspace/workspace-creator";
 
 function isUnauthorized(error: unknown) {
   return (
@@ -455,6 +456,8 @@ export default function WorkspacePage() {
                   {logoutError}
                 </p>
               ) : null}
+
+              <WorkspaceCreator />
 
               <div className="mt-10 grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_minmax(290px,0.75fr)]">
                 <section aria-labelledby="my-day-heading">

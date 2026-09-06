@@ -12,6 +12,8 @@ import type {
   SessionService,
 } from "./modules/auth/auth.types.js";
 import type { LoginRateLimiter } from "./modules/auth/login-rate-limiter.js";
+import { createWorkspaceRouter } from "./modules/workspaces/workspace.routes.js";
+import type { WorkspaceService } from "./modules/workspaces/workspace.types.js";
 
 export interface AppOptions {
   logger: Logger;
@@ -21,6 +23,7 @@ export interface AppOptions {
   registrationService?: AuthService;
   sessionService?: SessionService;
   uptimeSeconds?: () => number;
+  workspaceService?: WorkspaceService;
 }
 
 export function createApp({
@@ -31,6 +34,7 @@ export function createApp({
   registrationService,
   sessionService,
   uptimeSeconds = () => process.uptime(),
+  workspaceService,
 }: AppOptions): Express {
   const app = express();
 
@@ -66,6 +70,10 @@ export function createApp({
       sessionService,
       loginRateLimiter,
     ),
+  );
+  app.use(
+    "/api/workspaces",
+    createWorkspaceRouter(workspaceService, sessionService),
   );
 
   app.use((_request, _response, next) => {
