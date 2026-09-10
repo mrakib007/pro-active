@@ -3,6 +3,7 @@ import pino from "pino";
 import request from "supertest";
 import { describe, expect, test, vi } from "vitest";
 import { createApp } from "../../src/app.js";
+import { AppError } from "../../src/errors.js";
 import type {
   AuthService,
   PublicUser,
@@ -36,6 +37,13 @@ const createdWorkspace: CreatedWorkspace = {
     role: MembershipRole.OWNER,
     createdAt: new Date("2026-09-06T00:00:00.000Z"),
   },
+};
+
+const updatedWorkspace = {
+  id: "workspace-id",
+  name: "Product Team Renamed",
+  createdAt: new Date("2026-09-06T00:00:00.000Z"),
+  updatedAt: new Date("2026-09-07T00:00:00.000Z"),
 };
 
 function makeSessionService(
@@ -75,6 +83,8 @@ describe("workspace routes", () => {
     const workspaceService = {
       createWorkspace: async () => createdWorkspace,
       listWorkspaces,
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace: async () => undefined,
     };
 
     const response = await request(makeApp(workspaceService)).get(
@@ -103,6 +113,8 @@ describe("workspace routes", () => {
     const workspaceService = {
       createWorkspace: async () => createdWorkspace,
       listWorkspaces,
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace: async () => undefined,
     };
     const sessionService = makeSessionService({
       getCurrentUser: async () => publicUser,
@@ -135,6 +147,8 @@ describe("workspace routes", () => {
     const workspaceService: WorkspaceService = {
       createWorkspace,
       listWorkspaces: async () => [],
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace: async () => undefined,
     };
 
     const response = await request(makeApp(workspaceService))
@@ -155,6 +169,8 @@ describe("workspace routes", () => {
     const workspaceService: WorkspaceService = {
       createWorkspace,
       listWorkspaces: async () => [],
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace: async () => undefined,
     };
     const sessionService = makeSessionService({
       getCurrentUser: async () => publicUser,
@@ -182,6 +198,8 @@ describe("workspace routes", () => {
     const workspaceService: WorkspaceService = {
       createWorkspace,
       listWorkspaces: async () => [],
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace: async () => undefined,
     };
     const sessionService = makeSessionService({
       getCurrentUser: async () => publicUser,
@@ -202,6 +220,8 @@ describe("workspace routes", () => {
     const workspaceService: WorkspaceService = {
       createWorkspace,
       listWorkspaces: async () => [],
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace: async () => undefined,
     };
     const sessionService = makeSessionService({
       getCurrentUser: async () => publicUser,
@@ -234,5 +254,91 @@ describe("workspace routes", () => {
     expect(createWorkspace).toHaveBeenCalledWith("user-id", {
       name: "Product Team",
     });
+  });
+
+  test("updates a workspace for an authorized administrator", async () => {
+    const updateWorkspace = vi.fn(async () => updatedWorkspace);
+    const workspaceService = {
+      createWorkspace: async () => createdWorkspace,
+      listWorkspaces: async () => [],
+      updateWorkspace,
+      deleteWorkspace: async () => undefined,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(workspaceService, sessionService))
+      .patch("/api/workspaces/workspace-id")
+      .set("Cookie", SESSION_COOKIE_NAME + "=session-token")
+      .send({ name: "  Product Team Renamed  " });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: "ok",
+      data: {
+        workspace: {
+          id: "workspace-id",
+          name: "Product Team Renamed",
+          createdAt: "2026-09-06T00:00:00.000Z",
+          updatedAt: "2026-09-07T00:00:00.000Z",
+        },
+      },
+    });
+    expect(updateWorkspace).toHaveBeenCalledWith("user-id", "workspace-id", {
+      name: "Product Team Renamed",
+    });
+  });
+
+  test("returns a workspace authorization error from the update endpoint", async () => {
+    const updateWorkspace = vi.fn(async () => {
+      throw new AppError(
+        403,
+        "WORKSPACE_FORBIDDEN",
+        "You do not have permission to update this workspace",
+      );
+    });
+    const workspaceService = {
+      createWorkspace: async () => createdWorkspace,
+      listWorkspaces: async () => [],
+      updateWorkspace,
+      deleteWorkspace: async () => undefined,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(workspaceService, sessionService))
+      .patch("/api/workspaces/workspace-id")
+      .set("Cookie", SESSION_COOKIE_NAME + "=session-token")
+      .send({ name: "Renamed" });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      status: "error",
+      code: "WORKSPACE_FORBIDDEN",
+      message: "You do not have permission to update this workspace",
+    });
+  });
+
+  test("deletes a workspace for its owner", async () => {
+    const deleteWorkspace = vi.fn(async () => undefined);
+    const workspaceService = {
+      createWorkspace: async () => createdWorkspace,
+      listWorkspaces: async () => [],
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(workspaceService, sessionService))
+      .delete("/api/workspaces/workspace-id")
+      .set("Cookie", SESSION_COOKIE_NAME + "=session-token");
+
+    expect(response.status).toBe(204);
+    expect(response.text).toBe("");
+    expect(deleteWorkspace).toHaveBeenCalledWith("user-id", "workspace-id");
   });
 });

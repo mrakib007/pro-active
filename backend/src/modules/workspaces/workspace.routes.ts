@@ -4,7 +4,9 @@ import { createAuthenticationMiddleware } from "../auth/auth.middleware.js";
 import type { SessionService } from "../auth/auth.types.js";
 import {
   createWorkspaceController,
+  deleteWorkspaceController,
   listWorkspacesController,
+  updateWorkspaceController,
 } from "./workspace.controller.js";
 import { createWorkspaceService } from "./workspace.service.js";
 import type { WorkspaceService } from "./workspace.types.js";
@@ -27,6 +29,16 @@ export function createWorkspaceRouter(
     "/",
     createAuthenticationMiddleware(sessionService),
     createWorkspaceController(workspaceService),
+  );
+  router.patch(
+    "/:workspaceId",
+    createAuthenticationMiddleware(sessionService),
+    updateWorkspaceController(workspaceService),
+  );
+  router.delete(
+    "/:workspaceId",
+    createAuthenticationMiddleware(sessionService),
+    deleteWorkspaceController(workspaceService),
   );
 
   return router;

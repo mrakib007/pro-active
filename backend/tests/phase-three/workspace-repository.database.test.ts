@@ -3,6 +3,23 @@ import { afterEach, describe, expect, test } from "vitest";
 import { prisma } from "../../src/infrastructure/database/prisma.js";
 import { createWorkspaceRepository } from "../../src/modules/workspaces/workspace.repository.js";
 
+type WorkspaceManagementRepository = {
+  getWorkspaceAccess(
+    userId: string,
+    workspaceId: string,
+  ): Promise<{
+    workspaceId: string;
+    role: "OWNER" | "ADMIN" | "MEMBER";
+  } | null>;
+  updateWorkspace(input: { workspaceId: string; name: string }): Promise<{
+    id: string;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
+  deleteWorkspace(workspaceId: string): Promise<void>;
+};
+
 const createdWorkspaceIds: string[] = [];
 const createdUserIds: string[] = [];
 
@@ -140,6 +157,77 @@ describe("workspace repository", () => {
       await prisma.workspace.findMany({
         where: { name: workspaceName },
         include: { memberships: true },
+      }),
+    ).toEqual([]);
+  });
+
+  test("reads workspace access and updates the workspace name", async () => {
+    const user = await prisma.user.create({
+      data: {
+        fullName: "Workspace Editor",
+        email: "workspace-editor-" + randomUUID() + "@example.com",
+        passwordHash: "argon2-hash",
+      },
+    });
+    createdUserIds.push(user.id);
+
+    const workspace =
+      await createWorkspaceRepository().createWorkspaceWithOwner({
+        name: "Product Team " + randomUUID(),
+        userId: user.id,
+      });
+    createdWorkspaceIds.push(workspace.workspace.id);
+
+    const repository =
+      createWorkspaceRepository() as unknown as WorkspaceManagementRepository;
+    const access = await repository.getWorkspaceAccess(
+      user.id,
+      workspace.workspace.id,
+    );
+    const updated = await repository.updateWorkspace({
+      workspaceId: workspace.workspace.id,
+      name: "Renamed Product Team",
+    });
+
+    expect(access).toEqual({
+      workspaceId: workspace.workspace.id,
+      role: "OWNER",
+    });
+    expect(updated).toMatchObject({
+      id: workspace.workspace.id,
+      name: "Renamed Product Team",
+    });
+  });
+
+  test("deletes a workspace and its memberships", async () => {
+    const user = await prisma.user.create({
+      data: {
+        fullName: "Workspace Deleter",
+        email: "workspace-deleter-" + randomUUID() + "@example.com",
+        passwordHash: "argon2-hash",
+      },
+    });
+    createdUserIds.push(user.id);
+
+    const workspace =
+      await createWorkspaceRepository().createWorkspaceWithOwner({
+        name: "Delete Me " + randomUUID(),
+        userId: user.id,
+      });
+    createdWorkspaceIds.push(workspace.workspace.id);
+
+    const repository =
+      createWorkspaceRepository() as unknown as WorkspaceManagementRepository;
+    await repository.deleteWorkspace(workspace.workspace.id);
+
+    expect(
+      await prisma.workspace.findUnique({
+        where: { id: workspace.workspace.id },
+      }),
+    ).toBeNull();
+    expect(
+      await prisma.membership.findMany({
+        where: { workspaceId: workspace.workspace.id },
       }),
     ).toEqual([]);
   });

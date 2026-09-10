@@ -33,6 +33,33 @@ export function createWorkspaceRepository(
       }));
     },
 
+    async getWorkspaceAccess(userId, workspaceId) {
+      const membership = await database.membership.findUnique({
+        where: {
+          workspaceId_userId: {
+            userId,
+            workspaceId,
+          },
+        },
+        select: { role: true },
+      });
+
+      return membership ? { workspaceId, role: membership.role } : null;
+    },
+
+    async updateWorkspace({ workspaceId, name }) {
+      return database.workspace.update({
+        where: { id: workspaceId },
+        data: { name },
+      });
+    },
+
+    async deleteWorkspace(workspaceId) {
+      await database.workspace.delete({
+        where: { id: workspaceId },
+      });
+    },
+
     async createWorkspaceWithOwner(
       input: CreateWorkspaceWithOwnerRecord,
     ): Promise<CreatedWorkspace> {

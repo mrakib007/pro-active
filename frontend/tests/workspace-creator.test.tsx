@@ -115,4 +115,143 @@ describe("WorkspaceCreator", () => {
     );
     expect(requests[2].method).toBe("GET");
   });
+
+  test("opens workspace details from the list", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "ok",
+        data: { workspaces: [persistedWorkspace] },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    render(
+      <StoreProvider>
+        <WorkspaceCreator />
+      </StoreProvider>,
+    );
+
+    await screen.findByText("Product Team");
+    await user.click(
+      screen.getByRole("button", { name: "View Product Team" }),
+    );
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("Product Team");
+    expect(screen.getByRole("dialog")).toHaveTextContent("workspace-1");
+    expect(screen.getByRole("button", { name: /close/i })).toBeInTheDocument();
+  });
+
+  test("updates a workspace name and refreshes the list", async () => {
+    const updatedWorkspace = {
+      ...persistedWorkspace,
+      name: "Product Team Renamed",
+      updatedAt: "2026-09-07T00:00:00.000Z",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          data: { workspaces: [persistedWorkspace] },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          data: {
+            workspace: {
+              id: updatedWorkspace.id,
+              name: updatedWorkspace.name,
+              createdAt: updatedWorkspace.createdAt,
+              updatedAt: updatedWorkspace.updatedAt,
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          data: { workspaces: [updatedWorkspace] },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    render(
+      <StoreProvider>
+        <WorkspaceCreator />
+      </StoreProvider>,
+    );
+
+    await screen.findByText("Product Team");
+    await user.click(
+      screen.getByRole("button", { name: "Edit Product Team" }),
+    );
+    const input = screen.getByLabelText("Edit workspace name");
+    await user.clear(input);
+    await user.type(input, "Product Team Renamed");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    expect(
+      await screen.findByText("Product Team Renamed"),
+    ).toBeInTheDocument();
+    const requests = fetchMock.mock.calls.map(([input]) => input as Request);
+    expect(requests).toHaveLength(3);
+    expect(requests[1].method).toBe("PATCH");
+    expect(new URL(requests[1].url).pathname).toBe(
+      "/api/backend/workspaces/workspace-1",
+    );
+    expect(await requests[1].clone().json()).toEqual({
+      name: "Product Team Renamed",
+    });
+  });
+
+  test("confirms deletion and refreshes the list", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          data: { workspaces: [persistedWorkspace] },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          data: { workspaces: [] },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    render(
+      <StoreProvider>
+        <WorkspaceCreator />
+      </StoreProvider>,
+    );
+
+    await screen.findByText("Product Team");
+    await user.click(
+      screen.getByRole("button", { name: "Delete Product Team" }),
+    );
+    expect(
+      screen.getByText(/permanently delete this workspace/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /confirm delete/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Product Team"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const requests = fetchMock.mock.calls.map(([input]) => input as Request);
+    expect(requests[1].method).toBe("DELETE");
+    expect(new URL(requests[1].url).pathname).toBe(
+      "/api/backend/workspaces/workspace-1",
+    );
+  });
 });
