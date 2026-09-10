@@ -9,6 +9,10 @@ export type Workspace = {
   updatedAt: string;
 };
 
+export type WorkspaceSummary = Workspace & {
+  role: WorkspaceRole;
+};
+
 export type WorkspaceMembership = {
   id: string;
   workspaceId: string;
@@ -29,8 +33,19 @@ export type CreateWorkspaceResponse = {
   };
 };
 
+export type ListWorkspacesResponse = {
+  status: "ok";
+  data: {
+    workspaces: WorkspaceSummary[];
+  };
+};
+
 export const workspaceApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
+    getWorkspaces: build.query<ListWorkspacesResponse, void>({
+      providesTags: ["Workspace"],
+      query: () => "workspaces",
+    }),
     createWorkspace: build.mutation<
       CreateWorkspaceResponse,
       CreateWorkspaceRequest
@@ -45,4 +60,7 @@ export const workspaceApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useCreateWorkspaceMutation } = workspaceApi;
+export const {
+  useCreateWorkspaceMutation,
+  useGetWorkspacesQuery,
+} = workspaceApi;

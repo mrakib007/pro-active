@@ -140,6 +140,14 @@ describe("WorkspacePage", () => {
           },
         }),
       )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          data: {
+            workspaces: [],
+          },
+        }),
+      )
       .mockImplementationOnce(() => refreshResponse);
     vi.stubGlobal("fetch", fetchMock);
 
@@ -158,7 +166,7 @@ describe("WorkspacePage", () => {
       }),
     );
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(
       screen.queryByRole("heading", { name: /rakib hasan/i }),
     ).not.toBeInTheDocument();
@@ -204,7 +212,23 @@ describe("WorkspacePage", () => {
           },
         }),
       )
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          data: {
+            workspaces: [],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          status: "ok",
+          data: {
+            workspaces: [],
+          },
+        }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     const WorkspacePage = workspace.module.default as ComponentType;
@@ -218,9 +242,9 @@ describe("WorkspacePage", () => {
     await user.click(screen.getByRole("button", { name: /sign out/i }));
 
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/login"));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
 
-    const logoutRequest = fetchMock.mock.calls[1]?.[0] as Request;
+    const logoutRequest = fetchMock.mock.calls[2]?.[0] as Request;
     expect(new URL(logoutRequest.url).pathname).toBe(
       "/api/backend/auth/logout",
     );

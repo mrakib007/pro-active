@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import {
   useCreateWorkspaceMutation,
-  type CreateWorkspaceResponse,
+  useGetWorkspacesQuery,
 } from "../../lib/api/workspace-api";
 
 const MAX_WORKSPACE_NAME_LENGTH = 100;
@@ -31,10 +31,13 @@ export function WorkspaceCreator() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [createdWorkspace, setCreatedWorkspace] = useState<
-    CreateWorkspaceResponse["data"] | null
-  >(null);
+  const {
+    data: workspacesResponse,
+    isError: isWorkspacesError,
+    isLoading: isLoadingWorkspaces,
+  } = useGetWorkspacesQuery();
   const [createWorkspace, { isLoading }] = useCreateWorkspaceMutation();
+  const workspaces = workspacesResponse?.data.workspaces ?? [];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,7 +59,6 @@ export function WorkspaceCreator() {
     try {
       const response = await createWorkspace({ name }).unwrap();
 
-      setCreatedWorkspace(response.data);
       setWorkspaceName("");
       setNotice(`Workspace “${response.data.workspace.name}” created.`);
     } catch (error: unknown) {
@@ -136,19 +138,51 @@ export function WorkspaceCreator() {
         </p>
       ) : null}
 
-      {createdWorkspace ? (
-        <div className="mt-5 flex flex-col gap-3 rounded-md border border-[#dfe6df] bg-[#f1f5f1] px-4 py-3 text-sm text-[#4c4e48] sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-semibold">{createdWorkspace.workspace.name}</p>
-            <p className="mt-1 text-xs text-[#6e786f]">
-              Workspace ID: {createdWorkspace.workspace.id}
-            </p>
-          </div>
-          <span className="w-fit rounded-full bg-[#dfe6df] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#47705d]">
-            {createdWorkspace.membership.role}
-          </span>
+      <div className="mt-5 rounded-md border border-[#dfe6df] bg-[#f1f5f1] px-4 py-3 text-sm text-[#4c4e48]">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-semibold">Your workspaces</p>
+          {isLoadingWorkspaces ? (
+            <span className="text-xs text-[#6e786f]">Loading…</span>
+          ) : null}
         </div>
-      ) : null}
+
+        {isWorkspacesError ? (
+          <p
+            aria-live="polite"
+            className="mt-3 text-xs font-medium text-[#a4493d]"
+            role="status"
+          >
+            We could not load your workspaces. Please refresh and try again.
+          </p>
+        ) : null}
+
+        {!isLoadingWorkspaces && !isWorkspacesError && workspaces.length === 0 ? (
+          <p className="mt-3 text-xs text-[#6e786f]">
+            No workspaces yet. Create one to get started.
+          </p>
+        ) : null}
+
+        {workspaces.length > 0 ? (
+          <ul className="mt-3 space-y-2">
+            {workspaces.map((workspace) => (
+              <li
+                className="flex items-center justify-between gap-3 rounded-md border border-[#dfe6df] bg-white px-3 py-2.5"
+                key={workspace.id}
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{workspace.name}</p>
+                  <p className="mt-1 truncate text-xs text-[#6e786f]">
+                    Workspace ID: {workspace.id}
+                  </p>
+                </div>
+                <span className="w-fit shrink-0 rounded-full bg-[#dfe6df] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#47705d]">
+                  {workspace.role}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
     </section>
   );
 }
