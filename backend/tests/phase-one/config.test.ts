@@ -6,7 +6,7 @@ describe("loadConfig", () => {
     expect(loadConfig({})).toMatchObject({
       NODE_ENV: "development",
       HOST: "127.0.0.1",
-      PORT: 3000,
+      PORT: 3001,
       LOG_LEVEL: "info",
     });
   });
