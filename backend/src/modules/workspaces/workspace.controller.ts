@@ -5,6 +5,34 @@ import type { AuthenticatedRequest } from "../auth/auth.middleware.js";
 import { createWorkspaceSchema } from "./workspace.schemas.js";
 import type { WorkspaceService } from "./workspace.types.js";
 
+export function listWorkspacesController(
+  workspaceService: WorkspaceService,
+): RequestHandler {
+  return async (request, response, next) => {
+    const authenticatedRequest = request as Partial<AuthenticatedRequest>;
+
+    if (!authenticatedRequest.auth) {
+      next(
+        new AppError(401, "AUTHENTICATION_REQUIRED", "Authentication required"),
+      );
+      return;
+    }
+
+    try {
+      const workspaces = await workspaceService.listWorkspaces(
+        authenticatedRequest.auth.user.id,
+      );
+
+      response.status(200).json({
+        status: "ok",
+        data: { workspaces },
+      });
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+}
+
 export function createWorkspaceController(
   workspaceService: WorkspaceService,
 ): RequestHandler {

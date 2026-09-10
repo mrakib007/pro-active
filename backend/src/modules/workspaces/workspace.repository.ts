@@ -10,6 +10,29 @@ export function createWorkspaceRepository(
   database: PrismaClient = prisma,
 ): WorkspaceRepository {
   return {
+    async listWorkspacesForUser(userId: string) {
+      const memberships = await database.membership.findMany({
+        where: { userId },
+        orderBy: { createdAt: "asc" },
+        select: {
+          role: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+      });
+
+      return memberships.map(({ role, workspace }) => ({
+        ...workspace,
+        role,
+      }));
+    },
+
     async createWorkspaceWithOwner(
       input: CreateWorkspaceWithOwnerRecord,
     ): Promise<CreatedWorkspace> {

@@ -16,6 +16,10 @@ export interface StoredMembership {
   createdAt: Date;
 }
 
+export interface ListedWorkspace extends StoredWorkspace {
+  role: MembershipRole;
+}
+
 export interface CreatedWorkspace {
   workspace: StoredWorkspace;
   membership: StoredMembership;
@@ -27,12 +31,14 @@ export interface CreateWorkspaceWithOwnerRecord {
 }
 
 export interface WorkspaceRepository {
+  listWorkspacesForUser(userId: string): Promise<ListedWorkspace[]>;
   createWorkspaceWithOwner(
     input: CreateWorkspaceWithOwnerRecord,
   ): Promise<CreatedWorkspace>;
 }
 
 export interface WorkspaceService {
+  listWorkspaces(userId: string): Promise<ListedWorkspace[]>;
   createWorkspace(
     userId: string,
     input: CreateWorkspaceInput,

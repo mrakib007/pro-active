@@ -21,6 +21,72 @@ afterEach(async () => {
 });
 
 describe("workspace repository", () => {
+  test("lists only the requested user's workspaces and their roles", async () => {
+    const user = await prisma.user.create({
+      data: {
+        fullName: "Workspace Member",
+        email: "workspace-member-" + randomUUID() + "@example.com",
+        passwordHash: "argon2-hash",
+      },
+    });
+    const otherUser = await prisma.user.create({
+      data: {
+        fullName: "Other Workspace Owner",
+        email: "other-workspace-owner-" + randomUUID() + "@example.com",
+        passwordHash: "argon2-hash",
+      },
+    });
+    createdUserIds.push(user.id, otherUser.id);
+
+    const ownedWorkspace =
+      await createWorkspaceRepository().createWorkspaceWithOwner({
+        name: "Owned " + randomUUID(),
+        userId: user.id,
+      });
+    const sharedWorkspace =
+      await createWorkspaceRepository().createWorkspaceWithOwner({
+        name: "Shared " + randomUUID(),
+        userId: otherUser.id,
+      });
+    createdWorkspaceIds.push(
+      ownedWorkspace.workspace.id,
+      sharedWorkspace.workspace.id,
+    );
+    await prisma.membership.create({
+      data: {
+        workspaceId: sharedWorkspace.workspace.id,
+        userId: user.id,
+        role: "MEMBER",
+      },
+    });
+
+    const repository = createWorkspaceRepository();
+
+    const userWorkspaces = await repository.listWorkspacesForUser(user.id);
+    const otherUserWorkspaces = await repository.listWorkspacesForUser(
+      otherUser.id,
+    );
+
+    expect(userWorkspaces).toHaveLength(2);
+    expect(userWorkspaces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: ownedWorkspace.workspace.id,
+          role: "OWNER",
+        }),
+        expect.objectContaining({
+          id: sharedWorkspace.workspace.id,
+          role: "MEMBER",
+        }),
+      ]),
+    );
+    expect(otherUserWorkspaces).toHaveLength(1);
+    expect(otherUserWorkspaces[0]).toMatchObject({
+      id: sharedWorkspace.workspace.id,
+      role: "OWNER",
+    });
+  });
+
   test("creates a workspace and its owner membership", async () => {
     const user = await prisma.user.create({
       data: {

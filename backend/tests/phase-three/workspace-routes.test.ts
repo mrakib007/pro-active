@@ -70,9 +70,72 @@ function makeApp(
 }
 
 describe("workspace routes", () => {
+  test("requires an authenticated session when listing workspaces", async () => {
+    const listWorkspaces = vi.fn(async () => []);
+    const workspaceService = {
+      createWorkspace: async () => createdWorkspace,
+      listWorkspaces,
+    };
+
+    const response = await request(makeApp(workspaceService)).get(
+      "/api/workspaces",
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({
+      status: "error",
+      code: "AUTHENTICATION_REQUIRED",
+      message: "Authentication required",
+    });
+    expect(listWorkspaces).not.toHaveBeenCalled();
+  });
+
+  test("lists workspaces for the authenticated user with membership roles", async () => {
+    const listWorkspaces = vi.fn(async () => [
+      {
+        id: "workspace-id",
+        name: "Product Team",
+        createdAt: new Date("2026-09-06T00:00:00.000Z"),
+        updatedAt: new Date("2026-09-06T00:00:00.000Z"),
+        role: MembershipRole.OWNER,
+      },
+    ]);
+    const workspaceService = {
+      createWorkspace: async () => createdWorkspace,
+      listWorkspaces,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(workspaceService, sessionService))
+      .get("/api/workspaces")
+      .set("Cookie", SESSION_COOKIE_NAME + "=session-token");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: "ok",
+      data: {
+        workspaces: [
+          {
+            id: "workspace-id",
+            name: "Product Team",
+            createdAt: "2026-09-06T00:00:00.000Z",
+            updatedAt: "2026-09-06T00:00:00.000Z",
+            role: "OWNER",
+          },
+        ],
+      },
+    });
+    expect(listWorkspaces).toHaveBeenCalledWith("user-id");
+  });
+
   test("requires an authenticated session", async () => {
     const createWorkspace = vi.fn(async () => createdWorkspace);
-    const workspaceService: WorkspaceService = { createWorkspace };
+    const workspaceService: WorkspaceService = {
+      createWorkspace,
+      listWorkspaces: async () => [],
+    };
 
     const response = await request(makeApp(workspaceService))
       .post("/api/workspaces")
@@ -89,7 +152,10 @@ describe("workspace routes", () => {
 
   test("rejects invalid input before calling the workspace service", async () => {
     const createWorkspace = vi.fn(async () => createdWorkspace);
-    const workspaceService: WorkspaceService = { createWorkspace };
+    const workspaceService: WorkspaceService = {
+      createWorkspace,
+      listWorkspaces: async () => [],
+    };
     const sessionService = makeSessionService({
       getCurrentUser: async () => publicUser,
     });
@@ -113,7 +179,10 @@ describe("workspace routes", () => {
 
   test("rejects client-selected membership roles", async () => {
     const createWorkspace = vi.fn(async () => createdWorkspace);
-    const workspaceService: WorkspaceService = { createWorkspace };
+    const workspaceService: WorkspaceService = {
+      createWorkspace,
+      listWorkspaces: async () => [],
+    };
     const sessionService = makeSessionService({
       getCurrentUser: async () => publicUser,
     });
@@ -130,7 +199,10 @@ describe("workspace routes", () => {
 
   test("creates a workspace for the authenticated user as its owner", async () => {
     const createWorkspace = vi.fn(async () => createdWorkspace);
-    const workspaceService: WorkspaceService = { createWorkspace };
+    const workspaceService: WorkspaceService = {
+      createWorkspace,
+      listWorkspaces: async () => [],
+    };
     const sessionService = makeSessionService({
       getCurrentUser: async () => publicUser,
     });

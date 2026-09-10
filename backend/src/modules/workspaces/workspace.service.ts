@@ -13,6 +13,10 @@ export function createWorkspaceService({
   workspaceRepository = createWorkspaceRepository(),
 }: WorkspaceServiceDependencies = {}): WorkspaceService {
   return {
+    async listWorkspaces(userId) {
+      return workspaceRepository.listWorkspacesForUser(userId);
+    },
+
     async createWorkspace(userId, input) {
       const values = createWorkspaceSchema.parse(input);
 
