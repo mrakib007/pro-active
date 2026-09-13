@@ -20,6 +20,8 @@ const publicUser: PublicUser = {
   email: "person@example.com",
   createdAt: new Date("2026-09-03T00:00:00.000Z"),
 };
+const csrfCookieName = "pro_active_csrf";
+const csrfToken = "csrf-token";
 
 function makeSessionService(
   overrides: Partial<SessionService> = {},
@@ -193,10 +195,17 @@ describe("login route", () => {
     expect(response.headers["set-cookie"]).toEqual(
       expect.arrayContaining([
         expect.stringContaining(`${SESSION_COOKIE_NAME}=session-token`),
+        expect.stringContaining(`${csrfCookieName}=`),
         expect.stringContaining("HttpOnly"),
         expect.stringContaining("SameSite=Lax"),
       ]),
     );
+
+    const setCookies = response.headers["set-cookie"] as unknown as string[];
+    const csrfCookie = setCookies.find((cookie) =>
+      cookie.startsWith(`${csrfCookieName}=`),
+    );
+    expect(csrfCookie).not.toContain("HttpOnly");
   });
 
   test("rejects invalid login input before calling the login service", async () => {
@@ -311,7 +320,11 @@ describe("session routes", () => {
       makeApp(registrationService, { sessionService }),
     )
       .post("/api/auth/logout")
-      .set("Cookie", `${SESSION_COOKIE_NAME}=session-token`);
+      .set(
+        "Cookie",
+        `${SESSION_COOKIE_NAME}=session-token; ${csrfCookieName}=${csrfToken}`,
+      )
+      .set("X-CSRF-Token", csrfToken);
 
     expect(response.status).toBe(204);
     expect(response.text).toBe("");
@@ -319,7 +332,27 @@ describe("session routes", () => {
     expect(response.headers["set-cookie"]).toEqual(
       expect.arrayContaining([
         expect.stringContaining(`${SESSION_COOKIE_NAME}=;`),
+        expect.stringContaining(`${csrfCookieName}=;`),
       ]),
     );
+  });
+
+  test("rejects logout without a CSRF token", async () => {
+    const revokeSession = vi.fn(async () => undefined);
+    const sessionService = makeSessionService({ revokeSession });
+
+    const response = await request(
+      makeApp(registrationService, { sessionService }),
+    )
+      .post("/api/auth/logout")
+      .set("Cookie", `${SESSION_COOKIE_NAME}=session-token`);
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      status: "error",
+      code: "CSRF_TOKEN_MISSING",
+      message: "CSRF token is required",
+    });
+    expect(revokeSession).not.toHaveBeenCalled();
   });
 });

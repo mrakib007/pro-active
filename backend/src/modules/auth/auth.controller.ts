@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { z } from "zod";
 import { AppError } from "../../errors.js";
+import { clearCsrfCookie, setCsrfCookie } from "../../security/csrf.js";
 import type { AuthenticatedRequest } from "./auth.middleware.js";
 import { UserEmailAlreadyExistsError } from "./auth.repository.js";
 import { InvalidCredentialsError } from "./auth.service.js";
@@ -94,6 +95,7 @@ export function createLoginController(
         loginResult.sessionToken,
         sessionCookieOptions(),
       );
+      setCsrfCookie(response);
       response.status(200).json({
         status: "ok",
         data: { user: loginResult.user },
@@ -164,6 +166,7 @@ export function createLogoutController(
       }
 
       response.clearCookie(SESSION_COOKIE_NAME, clearSessionCookieOptions());
+      clearCsrfCookie(response);
       response.status(204).send();
     } catch (error: unknown) {
       next(error);

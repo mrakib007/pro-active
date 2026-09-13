@@ -8,6 +8,7 @@ import {
 import { createAuthenticationMiddleware } from "./auth.middleware.js";
 import { createAuthService } from "./auth.service.js";
 import { createSessionService } from "./session.service.js";
+import { createCsrfProtectionMiddleware } from "../../security/csrf.js";
 import {
   createLoginRateLimiter,
   type LoginRateLimiter,
@@ -31,6 +32,7 @@ export function createAuthRouter(
   loginRateLimiter: LoginRateLimiter = defaultLoginRateLimiter,
 ): ExpressRouter {
   const router = Router();
+  const csrfProtection = createCsrfProtectionMiddleware();
 
   router.post("/register", createRegisterController(registrationService));
   router.post("/login", createLoginController(loginService, loginRateLimiter));
@@ -39,7 +41,11 @@ export function createAuthRouter(
     createAuthenticationMiddleware(sessionService),
     createCurrentUserController(),
   );
-  router.post("/logout", createLogoutController(sessionService));
+  router.post(
+    "/logout",
+    csrfProtection,
+    createLogoutController(sessionService),
+  );
 
   return router;
 }

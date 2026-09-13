@@ -693,9 +693,85 @@ does not currently have a Redis service listening on `localhost:6379`; the
 limiter logged the connection failure and returned
 `LoginRateLimiterUnavailableError`, which maps to the intended `503` response.
 
+## Phase 2D: CSRF protection for cookie-authenticated mutations
+
+### What problem does this solve?
+
+Browsers automatically attach cookies to requests. That is convenient for
+session authentication, but it also means a malicious site could try to make a
+user's browser submit a state-changing request while the user is logged in.
+CSRF protection requires proof that the request came from our application, not
+only proof that a session cookie exists.
+
+### Design decisions
+
+- Keep the session cookie HttpOnly; frontend JavaScript must never read the
+  login credential.
+- Set a separate random pro_active_csrf cookie that is intentionally readable
+  by same-origin frontend JavaScript.
+- Require the frontend to copy that value into the X-CSRF-Token header.
+- Compare the cookie and header with a constant-time comparison.
+- Protect unsafe authenticated mutations and logout. Safe GET, HEAD, and
+  OPTIONS requests do not require a CSRF token.
+- Keep SameSite=Lax and production-only Secure cookie settings as
+  defense-in-depth.
+- Use the existing Next.js same-origin proxy, so the browser can read the
+  readable CSRF cookie without exposing the session cookie.
+- Do not add a database column or migration; the double-submit cookie pattern
+  is sufficient for this boundary.
+
+### Request flow
+
+```text
+login response
+  -> HttpOnly session cookie + readable CSRF cookie
+
+frontend mutation
+  -> browser sends session cookie automatically
+  -> API layer reads CSRF cookie
+  -> API layer sends X-CSRF-Token header
+  -> middleware compares cookie and header
+  -> controller handles the authenticated operation
+```
+
+An attacker can cause a browser to send the session cookie, but the
+same-origin policy prevents the attacker's site from reading the CSRF cookie
+and constructing the matching header.
+
+### File responsibilities
+
+| File                                       | Responsibility                                                   |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| src/security/csrf.ts                       | Generates cookies, compares tokens, and rejects unsafe requests. |
+| src/modules/auth/auth.controller.ts        | Creates the CSRF cookie after login and clears it on logout.     |
+| src/modules/auth/auth.routes.ts            | Protects logout with the CSRF middleware.                        |
+| src/modules/workspaces/workspace.routes.ts | Protects workspace create, update, and delete operations.        |
+| frontend/lib/api/base-api.ts               | Copies the readable cookie into the request header.              |
+| tests/phase-two/auth-routes.test.ts        | Verifies login/logout cookie behavior and logout rejection.      |
+| tests/phase-three/workspace-routes.test.ts | Verifies missing, mismatched, and accepted workspace tokens.     |
+| frontend/tests/api.test.tsx                | Verifies frontend mutation requests carry the CSRF header.       |
+
+### Verification evidence
+
+- The focused RED tests failed before the middleware and header injection
+  existed, then passed after implementation.
+- The backend suite passes with 58 tests across 12 test files.
+- The frontend suite passes with 25 tests across 5 test files.
+- Backend typechecking, linting, formatting, build, and PostgreSQL connection
+  checks pass.
+- Frontend typechecking, linting, and production build pass.
+
+### Explain it back
+
+1. Why is the session cookie still HttpOnly while the CSRF cookie is not?
+2. Why does a matching cookie/header pair stop a cross-site form submission?
+3. Why is SameSite=Lax useful but not treated as the only protection?
+4. Why do reads not need the same token requirement as mutations?
+5. What additional defense would an Origin allowlist provide?
+
 ### Next experiment
 
-The next authentication slice will design CSRF protection for cookie-based
-state changes. After that, the project can compare password reset, email
-verification, session management, and JWT access/refresh tokens as separate
-concepts.
+The next security experiments can cover Origin validation, password reset,
+email verification, expired-session cleanup, and a comparison with JWT
+access/refresh tokens. The next product-domain slice is membership management:
+invitations, role changes, and object-level authorization.

@@ -45,6 +45,8 @@ const updatedWorkspace = {
   createdAt: new Date("2026-09-06T00:00:00.000Z"),
   updatedAt: new Date("2026-09-07T00:00:00.000Z"),
 };
+const csrfCookieName = "pro_active_csrf";
+const csrfToken = "csrf-token";
 
 function makeSessionService(
   overrides: Partial<SessionService> = {},
@@ -164,6 +166,62 @@ describe("workspace routes", () => {
     expect(createWorkspace).not.toHaveBeenCalled();
   });
 
+  test("rejects a workspace mutation without a CSRF token", async () => {
+    const createWorkspace = vi.fn(async () => createdWorkspace);
+    const workspaceService: WorkspaceService = {
+      createWorkspace,
+      listWorkspaces: async () => [],
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace: async () => undefined,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(workspaceService, sessionService))
+      .post("/api/workspaces")
+      .set("Cookie", `${SESSION_COOKIE_NAME}=session-token`)
+      .send({ name: "Product Team" });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      status: "error",
+      code: "CSRF_TOKEN_MISSING",
+      message: "CSRF token is required",
+    });
+    expect(createWorkspace).not.toHaveBeenCalled();
+  });
+
+  test("rejects a workspace mutation with a mismatched CSRF token", async () => {
+    const createWorkspace = vi.fn(async () => createdWorkspace);
+    const workspaceService: WorkspaceService = {
+      createWorkspace,
+      listWorkspaces: async () => [],
+      updateWorkspace: async () => updatedWorkspace,
+      deleteWorkspace: async () => undefined,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(workspaceService, sessionService))
+      .post("/api/workspaces")
+      .set(
+        "Cookie",
+        `${SESSION_COOKIE_NAME}=session-token; ${csrfCookieName}=${csrfToken}`,
+      )
+      .set("X-CSRF-Token", "different-token")
+      .send({ name: "Product Team" });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      status: "error",
+      code: "CSRF_TOKEN_INVALID",
+      message: "CSRF token is invalid",
+    });
+    expect(createWorkspace).not.toHaveBeenCalled();
+  });
+
   test("rejects invalid input before calling the workspace service", async () => {
     const createWorkspace = vi.fn(async () => createdWorkspace);
     const workspaceService: WorkspaceService = {
@@ -178,7 +236,11 @@ describe("workspace routes", () => {
 
     const response = await request(makeApp(workspaceService, sessionService))
       .post("/api/workspaces")
-      .set("Cookie", SESSION_COOKIE_NAME + "=session-token")
+      .set(
+        "Cookie",
+        `${SESSION_COOKIE_NAME}=session-token; ${csrfCookieName}=${csrfToken}`,
+      )
+      .set("X-CSRF-Token", csrfToken)
       .send({ name: "" });
 
     expect(response.status).toBe(400);
@@ -207,7 +269,11 @@ describe("workspace routes", () => {
 
     const response = await request(makeApp(workspaceService, sessionService))
       .post("/api/workspaces")
-      .set("Cookie", SESSION_COOKIE_NAME + "=session-token")
+      .set(
+        "Cookie",
+        `${SESSION_COOKIE_NAME}=session-token; ${csrfCookieName}=${csrfToken}`,
+      )
+      .set("X-CSRF-Token", csrfToken)
       .send({ name: "Product Team", role: "ADMIN" });
 
     expect(response.status).toBe(400);
@@ -229,7 +295,11 @@ describe("workspace routes", () => {
 
     const response = await request(makeApp(workspaceService, sessionService))
       .post("/api/workspaces")
-      .set("Cookie", SESSION_COOKIE_NAME + "=session-token")
+      .set(
+        "Cookie",
+        `${SESSION_COOKIE_NAME}=session-token; ${csrfCookieName}=${csrfToken}`,
+      )
+      .set("X-CSRF-Token", csrfToken)
       .send({ name: "  Product Team  " });
 
     expect(response.status).toBe(201);
@@ -270,7 +340,11 @@ describe("workspace routes", () => {
 
     const response = await request(makeApp(workspaceService, sessionService))
       .patch("/api/workspaces/workspace-id")
-      .set("Cookie", SESSION_COOKIE_NAME + "=session-token")
+      .set(
+        "Cookie",
+        `${SESSION_COOKIE_NAME}=session-token; ${csrfCookieName}=${csrfToken}`,
+      )
+      .set("X-CSRF-Token", csrfToken)
       .send({ name: "  Product Team Renamed  " });
 
     expect(response.status).toBe(200);
@@ -310,7 +384,11 @@ describe("workspace routes", () => {
 
     const response = await request(makeApp(workspaceService, sessionService))
       .patch("/api/workspaces/workspace-id")
-      .set("Cookie", SESSION_COOKIE_NAME + "=session-token")
+      .set(
+        "Cookie",
+        `${SESSION_COOKIE_NAME}=session-token; ${csrfCookieName}=${csrfToken}`,
+      )
+      .set("X-CSRF-Token", csrfToken)
       .send({ name: "Renamed" });
 
     expect(response.status).toBe(403);
@@ -335,7 +413,11 @@ describe("workspace routes", () => {
 
     const response = await request(makeApp(workspaceService, sessionService))
       .delete("/api/workspaces/workspace-id")
-      .set("Cookie", SESSION_COOKIE_NAME + "=session-token");
+      .set(
+        "Cookie",
+        `${SESSION_COOKIE_NAME}=session-token; ${csrfCookieName}=${csrfToken}`,
+      )
+      .set("X-CSRF-Token", csrfToken);
 
     expect(response.status).toBe(204);
     expect(response.text).toBe("");

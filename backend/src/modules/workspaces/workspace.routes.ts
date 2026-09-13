@@ -1,6 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import { createSessionService } from "../auth/session.service.js";
 import { createAuthenticationMiddleware } from "../auth/auth.middleware.js";
+import { createCsrfProtectionMiddleware } from "../../security/csrf.js";
 import type { SessionService } from "../auth/auth.types.js";
 import {
   createWorkspaceController,
@@ -19,6 +20,7 @@ export function createWorkspaceRouter(
   sessionService: SessionService = defaultSessionService,
 ): ExpressRouter {
   const router = Router();
+  const csrfProtection = createCsrfProtectionMiddleware();
 
   router.get(
     "/",
@@ -28,16 +30,19 @@ export function createWorkspaceRouter(
   router.post(
     "/",
     createAuthenticationMiddleware(sessionService),
+    csrfProtection,
     createWorkspaceController(workspaceService),
   );
   router.patch(
     "/:workspaceId",
     createAuthenticationMiddleware(sessionService),
+    csrfProtection,
     updateWorkspaceController(workspaceService),
   );
   router.delete(
     "/:workspaceId",
     createAuthenticationMiddleware(sessionService),
+    csrfProtection,
     deleteWorkspaceController(workspaceService),
   );
 

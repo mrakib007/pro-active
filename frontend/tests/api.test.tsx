@@ -28,6 +28,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  document.cookie = "pro_active_csrf=; Max-Age=0; path=/";
 });
 
 describe("frontend API layer", () => {
@@ -74,6 +75,7 @@ describe("frontend API layer", () => {
   });
 
   test("logs in, reads the current user, and logs out through the backend contract", async () => {
+    document.cookie = "pro_active_csrf=csrf-token; path=/";
     const user = {
       id: "user-1",
       fullName: "Rakib Hasan",
@@ -122,6 +124,21 @@ describe("frontend API layer", () => {
       "/api/backend/auth/logout",
     );
     expect(requests[2].method).toBe("POST");
+    expect(requests[2].headers.get("X-CSRF-Token")).toBe("csrf-token");
+  });
+
+  test("adds the CSRF token from the readable cookie to mutation requests", async () => {
+    document.cookie = "pro_active_csrf=csrf-token; path=/";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const store = createTestStore();
+    await store.dispatch(authApi.endpoints.logout.initiate()).unwrap();
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(request.headers.get("X-CSRF-Token")).toBe("csrf-token");
   });
 
   test("builds generic CRUD requests from resource arguments", async () => {
