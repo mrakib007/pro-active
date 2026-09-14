@@ -14,6 +14,8 @@ import type {
 import type { LoginRateLimiter } from "./modules/auth/login-rate-limiter.js";
 import { createWorkspaceRouter } from "./modules/workspaces/workspace.routes.js";
 import type { WorkspaceService } from "./modules/workspaces/workspace.types.js";
+import { createMembershipRouter } from "./modules/memberships/membership.routes.js";
+import type { MembershipService } from "./modules/memberships/membership.types.js";
 
 export interface AppOptions {
   logger: Logger;
@@ -24,6 +26,7 @@ export interface AppOptions {
   sessionService?: SessionService;
   uptimeSeconds?: () => number;
   workspaceService?: WorkspaceService;
+  membershipService?: MembershipService;
 }
 
 export function createApp({
@@ -35,6 +38,7 @@ export function createApp({
   sessionService,
   uptimeSeconds = () => process.uptime(),
   workspaceService,
+  membershipService,
 }: AppOptions): Express {
   const app = express();
 
@@ -74,6 +78,10 @@ export function createApp({
   app.use(
     "/api/workspaces",
     createWorkspaceRouter(workspaceService, sessionService),
+  );
+  app.use(
+    "/api/workspaces/:workspaceId/members",
+    createMembershipRouter(membershipService, sessionService),
   );
 
   app.use((_request, _response, next) => {

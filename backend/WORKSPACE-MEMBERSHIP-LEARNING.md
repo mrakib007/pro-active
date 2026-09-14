@@ -124,13 +124,14 @@ Without a valid session:
 With a valid session and workspace name, the response is `201 Created` and
 contains the new workspace plus its `OWNER` membership.
 
-## What is intentionally not built yet
+## Follow-up membership slice
 
-This slice only creates a workspace. The next separate slices can add:
+The workspace foundation now includes listing workspaces, permission checks,
+and membership role management. The focused membership design and
+implementation notes are in:
 
-- listing a user’s workspaces
-- inviting members
-- membership permission checks
-- changing or removing roles
+backend/WORKSPACE-MEMBERSHIP-MANAGEMENT.md
 
-Keeping those separate makes the authorization concepts easier to learn.
+That document explains the authorization matrix and the deliberate
+non-goals. Invitations, ownership transfer, and audit-log persistence remain
+separate lessons so each new state transition can be learned independently.
