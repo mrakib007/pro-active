@@ -21,6 +21,104 @@ afterEach(async () => {
 });
 
 describe("membership repository", () => {
+  test("finds a user and creates a membership with public fields", async () => {
+    const owner = await prisma.user.create({
+      data: {
+        fullName: "Membership Add Owner",
+        email: "membership-add-owner-" + randomUUID() + "@example.com",
+        passwordHash: "argon2-hash",
+      },
+    });
+    const member = await prisma.user.create({
+      data: {
+        fullName: "Membership Add Target",
+        email: "membership-add-target-" + randomUUID() + "@example.com",
+        passwordHash: "argon2-hash",
+      },
+    });
+    createdUserIds.push(owner.id, member.id);
+
+    const workspace = await prisma.workspace.create({
+      data: {
+        name: "Membership Add " + randomUUID(),
+        memberships: { create: { userId: owner.id, role: "OWNER" } },
+      },
+    });
+    createdWorkspaceIds.push(workspace.id);
+
+    const repository = createMembershipRepository();
+    const foundUser = await repository.findUserByEmail(member.email);
+    const created = await repository.createMembership({
+      workspaceId: workspace.id,
+      userId: member.id,
+      role: "MEMBER",
+    });
+
+    expect(foundUser).toEqual({
+      id: member.id,
+      fullName: "Membership Add Target",
+      email: member.email,
+    });
+    expect(created).toMatchObject({
+      workspaceId: workspace.id,
+      userId: member.id,
+      fullName: "Membership Add Target",
+      email: member.email,
+      role: "MEMBER",
+    });
+  });
+
+  test("finds an existing membership by workspace and user", async () => {
+    const owner = await prisma.user.create({
+      data: {
+        fullName: "Membership Lookup Owner",
+        email: "membership-lookup-owner-" + randomUUID() + "@example.com",
+        passwordHash: "argon2-hash",
+      },
+    });
+    const member = await prisma.user.create({
+      data: {
+        fullName: "Membership Lookup Target",
+        email: "membership-lookup-target-" + randomUUID() + "@example.com",
+        passwordHash: "argon2-hash",
+      },
+    });
+    createdUserIds.push(owner.id, member.id);
+
+    const workspace = await prisma.workspace.create({
+      data: {
+        name: "Membership Lookup " + randomUUID(),
+        memberships: {
+          create: [
+            { userId: owner.id, role: "OWNER" },
+            { userId: member.id, role: "MEMBER" },
+          ],
+        },
+      },
+    });
+    createdWorkspaceIds.push(workspace.id);
+
+    const membership = await prisma.membership.findUniqueOrThrow({
+      where: {
+        workspaceId_userId: {
+          workspaceId: workspace.id,
+          userId: member.id,
+        },
+      },
+    });
+
+    await expect(
+      createMembershipRepository().getMembershipByUserId(
+        workspace.id,
+        member.id,
+      ),
+    ).resolves.toMatchObject({
+      id: membership.id,
+      userId: member.id,
+      role: "MEMBER",
+    });
+  });
+
   test("lists workspace members with their public user fields", async () => {
     const owner = await prisma.user.create({
       data: {

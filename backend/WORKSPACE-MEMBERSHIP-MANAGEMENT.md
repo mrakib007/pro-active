@@ -6,13 +6,31 @@ without introducing invitations or ownership transfer yet.
 
 ## Scope
 
-The backend exposes three membership endpoints:
+The backend exposes four membership endpoints:
 
 ```text
 GET    /api/workspaces/:workspaceId/members
+POST   /api/workspaces/:workspaceId/members
 PATCH  /api/workspaces/:workspaceId/members/:membershipId
 DELETE /api/workspaces/:workspaceId/members/:membershipId
 ```
+
+POST adds an already registered user by email. Its strict body accepts:
+
+```json
+{ "email": "teammate@example.com", "role": "MEMBER" }
+```
+
+or:
+
+```json
+{ "email": "teammate@example.com", "role": "ADMIN" }
+```
+
+The service trims and lowercases the email before looking up the user. An
+unknown email returns 404 USER_NOT_FOUND; an existing membership returns 409
+MEMBERSHIP_ALREADY_EXISTS. This is deliberate: inviting an unregistered user
+requires a separate invitation state machine.
 
 The update body is strict and accepts only:
 
@@ -31,12 +49,12 @@ is a separate security-sensitive operation and will be designed later.
 
 ## Authorization matrix
 
-| Actor role   | List members | Change non-owner role | Remove non-owner    |
-| ------------ | ------------ | --------------------- | ------------------- |
-| OWNER        | Yes          | Yes                   | Yes                 |
-| ADMIN        | Yes          | Only MEMBER targets   | Only MEMBER targets |
-| MEMBER       | Yes          | No                    | No                  |
-| Not a member | No           | No                    | No                  |
+| Actor role   | List members | Add ADMIN | Add MEMBER | Change non-owner role | Remove non-owner    |
+| ------------ | ------------ | --------- | ---------- | --------------------- | ------------------- |
+| OWNER        | Yes          | Yes       | Yes        | Yes                   | Yes                 |
+| ADMIN        | Yes          | No        | Yes        | Only MEMBER targets   | Only MEMBER targets |
+| MEMBER       | Yes          | No        | No         | No                    | No                  |
+| Not a member | No           | No        | No         | No                    | No                  |
 
 Owner memberships are protected in this slice. That means the last owner
 cannot be removed accidentally, and an owner cannot be demoted through these
@@ -53,7 +71,7 @@ returns 404 MEMBERSHIP_NOT_FOUND.
 ```text
 Route
   -> session authentication
-  -> CSRF protection for PATCH and DELETE
+  -> CSRF protection for POST, PATCH, and DELETE
   -> controller (HTTP validation and response mapping)
   -> membership service (authorization rules)
   -> membership repository (workspace-scoped Prisma queries)
@@ -68,6 +86,8 @@ may do inside a workspace.
 
 - Membership reads and writes always include the workspace ID.
 - Role updates use a transaction for the scoped update and read-back.
+- Membership creation relies on the database unique constraint for the final
+  duplicate check; a concurrent duplicate is mapped to a 409 response.
 - The existing unique constraint on (workspace_id, user_id) remains the
   database-level protection against duplicate membership rows.
 - The service performs authorization before calling mutation methods.

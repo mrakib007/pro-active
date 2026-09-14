@@ -4,6 +4,7 @@ import { createSessionService } from "../auth/session.service.js";
 import { createCsrfProtectionMiddleware } from "../../security/csrf.js";
 import type { SessionService } from "../auth/auth.types.js";
 import {
+  createMemberController,
   listMembersController,
   removeMemberController,
   updateMemberRoleController,
@@ -22,6 +23,12 @@ export function createMembershipRouter(
   const authentication = createAuthenticationMiddleware(sessionService);
   const csrfProtection = createCsrfProtectionMiddleware();
 
+  router.post(
+    "/",
+    authentication,
+    csrfProtection,
+    createMemberController(membershipService),
+  );
   router.get("/", authentication, listMembersController(membershipService));
   router.patch(
     "/:membershipId",

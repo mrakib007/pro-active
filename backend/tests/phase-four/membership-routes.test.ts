@@ -30,6 +30,11 @@ const listedMember = {
 
 type MembershipServiceDouble = {
   listMembers(actorUserId: string, workspaceId: string): Promise<unknown[]>;
+  addMember?: (
+    actorUserId: string,
+    workspaceId: string,
+    input: { email: string; role: "ADMIN" | "MEMBER" },
+  ) => Promise<unknown>;
   updateMemberRole(
     actorUserId: string,
     workspaceId: string,
@@ -78,6 +83,91 @@ function mutationCookies() {
 }
 
 describe("membership routes", () => {
+  test("validates a new member before calling the service", async () => {
+    const addMember = vi.fn(async () => listedMember);
+    const membershipService: MembershipServiceDouble = {
+      listMembers: async () => [listedMember],
+      addMember,
+      updateMemberRole: async () => listedMember,
+      removeMember: async () => undefined,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(membershipService, sessionService))
+      .post("/api/workspaces/workspace-id/members")
+      .set("Cookie", mutationCookies())
+      .set("X-CSRF-Token", csrfToken)
+      .send({ email: "not-an-email", role: "OWNER" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe("VALIDATION_ERROR");
+    expect(addMember).not.toHaveBeenCalled();
+  });
+
+  test("adds a member through the authenticated API", async () => {
+    const addedMember = {
+      ...listedMember,
+      userId: "new-member-id",
+      fullName: "Fahim Rahman",
+      email: "fahim@example.com",
+    };
+    const addMember = vi.fn(async () => addedMember);
+    const membershipService: MembershipServiceDouble = {
+      listMembers: async () => [listedMember],
+      addMember,
+      updateMemberRole: async () => listedMember,
+      removeMember: async () => undefined,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(membershipService, sessionService))
+      .post("/api/workspaces/workspace-id/members")
+      .set("Cookie", mutationCookies())
+      .set("X-CSRF-Token", csrfToken)
+      .send({ email: " Fahim@Example.com ", role: "MEMBER" });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      status: "ok",
+      data: {
+        membership: {
+          ...addedMember,
+          createdAt: "2026-09-07T00:00:00.000Z",
+        },
+      },
+    });
+    expect(addMember).toHaveBeenCalledWith("user-id", "workspace-id", {
+      email: "fahim@example.com",
+      role: "MEMBER",
+    });
+  });
+
+  test("rejects adding a member without a CSRF token", async () => {
+    const addMember = vi.fn(async () => listedMember);
+    const membershipService: MembershipServiceDouble = {
+      listMembers: async () => [listedMember],
+      addMember,
+      updateMemberRole: async () => listedMember,
+      removeMember: async () => undefined,
+    };
+    const sessionService = makeSessionService({
+      getCurrentUser: async () => publicUser,
+    });
+
+    const response = await request(makeApp(membershipService, sessionService))
+      .post("/api/workspaces/workspace-id/members")
+      .set("Cookie", SESSION_COOKIE_NAME + "=session-token")
+      .send({ email: "fahim@example.com", role: "MEMBER" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("CSRF_TOKEN_MISSING");
+    expect(addMember).not.toHaveBeenCalled();
+  });
+
   test("requires authentication when listing workspace members", async () => {
     const listMembers = vi.fn(async () => [listedMember]);
     const membershipService: MembershipServiceDouble = {

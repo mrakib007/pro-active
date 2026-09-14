@@ -14,6 +14,20 @@ export class MembershipNotFoundError extends Error {
   }
 }
 
+export class MembershipAlreadyExistsError extends Error {
+  constructor() {
+    super("Membership already exists");
+    this.name = "MembershipAlreadyExistsError";
+  }
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
+
 const memberSelect = {
   id: true,
   workspaceId: true,
@@ -70,6 +84,52 @@ export function createMembershipRepository(
       });
 
       return memberships.map(toMembershipMember);
+    },
+
+    async findUserByEmail(email) {
+      return database.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+        },
+      });
+    },
+
+    async getMembershipByUserId(workspaceId, userId) {
+      return database.membership.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId,
+          },
+        },
+        select: {
+          id: true,
+          workspaceId: true,
+          userId: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+    },
+
+    async createMembership({ workspaceId, userId, role }) {
+      try {
+        const membership = await database.membership.create({
+          data: { workspaceId, userId, role },
+          select: memberSelect,
+        });
+
+        return toMembershipMember(membership);
+      } catch (error: unknown) {
+        if (isUniqueConstraintError(error)) {
+          throw new MembershipAlreadyExistsError();
+        }
+
+        throw error;
+      }
     },
 
     async getMembership(workspaceId, membershipId) {

@@ -42,6 +42,18 @@ function makeRepository(
     }),
     listMembers: async () => [memberView],
     getMembership: async () => memberMembership,
+    findUserByEmail: async () => ({
+      id: "new-member-id",
+      fullName: "Fahim Rahman",
+      email: "fahim@example.com",
+    }),
+    getMembershipByUserId: async () => null,
+    createMembership: async () => ({
+      ...memberView,
+      userId: "new-member-id",
+      fullName: "Fahim Rahman",
+      email: "fahim@example.com",
+    }),
     updateMembershipRole: async () => ({
       ...memberView,
       role: "ADMIN",
@@ -52,6 +64,118 @@ function makeRepository(
 }
 
 describe("membership service", () => {
+  test("allows an owner to add an administrator", async () => {
+    const createMembership = vi.fn(async () => ({
+      ...memberView,
+      userId: "new-member-id",
+      role: "ADMIN" as const,
+    }));
+    const service = createMembershipService({
+      membershipRepository: makeRepository({ createMembership }),
+    });
+
+    await service.addMember("owner-id", "workspace-id", {
+      email: "Fahim@Example.com",
+      role: "ADMIN",
+    });
+
+    expect(createMembership).toHaveBeenCalledWith({
+      workspaceId: "workspace-id",
+      userId: "new-member-id",
+      role: "ADMIN",
+    });
+  });
+
+  test("allows an admin to add a member", async () => {
+    const createMembership = vi.fn(async () => ({
+      ...memberView,
+      userId: "new-member-id",
+      role: "MEMBER" as const,
+    }));
+    const service = createMembershipService({
+      membershipRepository: makeRepository({
+        getWorkspaceAccess: async () => ({
+          workspaceId: "workspace-id",
+          role: "ADMIN",
+        }),
+        createMembership,
+      }),
+    });
+
+    await service.addMember("admin-id", "workspace-id", {
+      email: "fahim@example.com",
+      role: "MEMBER",
+    });
+
+    expect(createMembership).toHaveBeenCalled();
+  });
+
+  test("rejects an admin from adding another administrator", async () => {
+    const createMembership = vi.fn(async () => memberView);
+    const service = createMembershipService({
+      membershipRepository: makeRepository({
+        getWorkspaceAccess: async () => ({
+          workspaceId: "workspace-id",
+          role: "ADMIN",
+        }),
+        createMembership,
+      }),
+    });
+
+    await expect(
+      service.addMember("admin-id", "workspace-id", {
+        email: "fahim@example.com",
+        role: "ADMIN",
+      }),
+    ).rejects.toMatchObject({
+      code: "MEMBERSHIP_FORBIDDEN",
+      statusCode: 403,
+    });
+    expect(createMembership).not.toHaveBeenCalled();
+  });
+
+  test("rejects adding an unknown user", async () => {
+    const createMembership = vi.fn(async () => memberView);
+    const service = createMembershipService({
+      membershipRepository: makeRepository({
+        findUserByEmail: async () => null,
+        createMembership,
+      }),
+    });
+
+    await expect(
+      service.addMember("owner-id", "workspace-id", {
+        email: "missing@example.com",
+        role: "MEMBER",
+      }),
+    ).rejects.toMatchObject({
+      code: "USER_NOT_FOUND",
+      statusCode: 404,
+    });
+    expect(createMembership).not.toHaveBeenCalled();
+  });
+
+  test("rejects adding an existing workspace member", async () => {
+    const createMembership = vi.fn(async () => memberView);
+    const service = createMembershipService({
+      membershipRepository: makeRepository({
+        getMembershipByUserId: async () => memberMembership,
+        createMembership,
+      }),
+    });
+
+    await expect(
+      service.addMember("owner-id", "workspace-id", {
+        email: "fahim@example.com",
+        role: "MEMBER",
+      }),
+    ).rejects.toMatchObject({
+      code: "MEMBERSHIP_ALREADY_EXISTS",
+      statusCode: 409,
+    });
+    expect(createMembership).not.toHaveBeenCalled();
+  });
+
   test("lists members for any workspace member", async () => {
     const listedMembers = [memberView];
     const listMembers = vi.fn(async () => listedMembers);

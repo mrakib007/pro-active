@@ -1,5 +1,8 @@
 import type { MembershipRole } from "@prisma/client";
-import type { UpdateMembershipInput } from "./membership.schemas.js";
+import type {
+  CreateMembershipInput,
+  UpdateMembershipInput,
+} from "./membership.schemas.js";
 
 export type EditableMembershipRole = "ADMIN" | "MEMBER";
 
@@ -21,6 +24,18 @@ export interface MembershipMember extends StoredMembership {
   email: string;
 }
 
+export interface MembershipUser {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface CreateMembershipRecord {
+  workspaceId: string;
+  userId: string;
+  role: EditableMembershipRole;
+}
+
 export interface UpdateMembershipRoleRecord {
   workspaceId: string;
   membershipId: string;
@@ -38,6 +53,12 @@ export interface MembershipRepository {
     workspaceId: string,
   ): Promise<MembershipAccess | null>;
   listMembers(workspaceId: string): Promise<MembershipMember[]>;
+  findUserByEmail(email: string): Promise<MembershipUser | null>;
+  getMembershipByUserId(
+    workspaceId: string,
+    userId: string,
+  ): Promise<StoredMembership | null>;
+  createMembership(input: CreateMembershipRecord): Promise<MembershipMember>;
   getMembership(
     workspaceId: string,
     membershipId: string,
@@ -49,6 +70,11 @@ export interface MembershipRepository {
 }
 
 export interface MembershipService {
+  addMember(
+    actorUserId: string,
+    workspaceId: string,
+    input: CreateMembershipInput,
+  ): Promise<MembershipMember>;
   listMembers(
     actorUserId: string,
     workspaceId: string,

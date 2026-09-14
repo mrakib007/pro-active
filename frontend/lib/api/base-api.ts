@@ -22,6 +22,7 @@ function readCsrfToken(): string | undefined {
 export const apiTagTypes = [
   "User",
   "Workspace",
+  "Membership",
   "Project",
   "Task",
   "Comment",

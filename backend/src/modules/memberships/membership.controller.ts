@@ -2,7 +2,10 @@ import type { RequestHandler } from "express";
 import { z } from "zod";
 import { AppError } from "../../errors.js";
 import type { AuthenticatedRequest } from "../auth/auth.middleware.js";
-import { updateMembershipSchema } from "./membership.schemas.js";
+import {
+  createMembershipSchema,
+  updateMembershipSchema,
+} from "./membership.schemas.js";
 import type { MembershipService } from "./membership.types.js";
 
 function getAuthenticatedUserId(
@@ -35,6 +38,53 @@ function getRouteParam(
   }
 
   return value;
+}
+
+export function createMemberController(
+  membershipService: MembershipService,
+): RequestHandler {
+  return async (request, response, next) => {
+    const parsedInput = createMembershipSchema.safeParse(request.body);
+
+    if (!parsedInput.success) {
+      const formattedErrors = z.flattenError(parsedInput.error);
+
+      next(
+        new AppError(400, "VALIDATION_ERROR", "Request validation failed", {
+          formErrors: formattedErrors.formErrors,
+          fieldErrors: formattedErrors.fieldErrors,
+        }),
+      );
+      return;
+    }
+
+    const actorUserId = getAuthenticatedUserId(request, next);
+    const workspaceId = getRouteParam(
+      request,
+      "workspaceId",
+      next,
+      "INVALID_WORKSPACE_ID",
+    );
+
+    if (!actorUserId || !workspaceId) {
+      return;
+    }
+
+    try {
+      const membership = await membershipService.addMember(
+        actorUserId,
+        workspaceId,
+        parsedInput.data,
+      );
+
+      response.status(201).json({
+        status: "ok",
+        data: { membership },
+      });
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
 }
 
 export function listMembersController(
