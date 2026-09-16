@@ -446,6 +446,17 @@ export function WorkspaceCreator() {
                       >
                         Members
                       </Link>
+                      <Link
+                        aria-label={"View projects for " + workspace.name}
+                        className="inline-flex h-8 items-center justify-center rounded-md border border-[#d7d8d1] bg-white px-2.5 text-xs font-semibold text-[#4c4e48] transition hover:bg-[#f4f4f0] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#d9d4c6]"
+                        href={
+                          "/workspace/" +
+                          encodeURIComponent(workspace.id) +
+                          "/projects"
+                        }
+                      >
+                        Projects
+                      </Link>
                       {workspace.role === "OWNER" ? (
                         <button
                           aria-label={"Delete " + workspace.name}

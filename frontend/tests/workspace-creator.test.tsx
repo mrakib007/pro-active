@@ -69,6 +69,28 @@ describe("WorkspaceCreator", () => {
     ).toHaveAttribute("href", "/workspace/workspace-1/members");
   });
 
+  test("links a workspace to its projects page", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        status: "ok",
+        data: { workspaces: [persistedWorkspace] },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <StoreProvider>
+        <WorkspaceCreator />
+      </StoreProvider>,
+    );
+
+    expect(
+      await screen.findByRole("link", {
+        name: "View projects for Product Team",
+      }),
+    ).toHaveAttribute("href", "/workspace/workspace-1/projects");
+  });
+
   test("refreshes the persisted list after creating a workspace", async () => {
     const newWorkspace = {
       ...persistedWorkspace,

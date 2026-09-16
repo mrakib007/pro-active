@@ -16,6 +16,8 @@ import { createWorkspaceRouter } from "./modules/workspaces/workspace.routes.js"
 import type { WorkspaceService } from "./modules/workspaces/workspace.types.js";
 import { createMembershipRouter } from "./modules/memberships/membership.routes.js";
 import type { MembershipService } from "./modules/memberships/membership.types.js";
+import { createProjectRouter } from "./modules/projects/project.routes.js";
+import type { ProjectService } from "./modules/projects/project.types.js";
 
 export interface AppOptions {
   logger: Logger;
@@ -27,6 +29,7 @@ export interface AppOptions {
   uptimeSeconds?: () => number;
   workspaceService?: WorkspaceService;
   membershipService?: MembershipService;
+  projectService?: ProjectService;
 }
 
 export function createApp({
@@ -39,6 +42,7 @@ export function createApp({
   uptimeSeconds = () => process.uptime(),
   workspaceService,
   membershipService,
+  projectService,
 }: AppOptions): Express {
   const app = express();
 
@@ -82,6 +86,10 @@ export function createApp({
   app.use(
     "/api/workspaces/:workspaceId/members",
     createMembershipRouter(membershipService, sessionService),
+  );
+  app.use(
+    "/api/workspaces/:workspaceId/projects",
+    createProjectRouter(projectService, sessionService),
   );
 
   app.use((_request, _response, next) => {

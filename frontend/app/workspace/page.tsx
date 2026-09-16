@@ -133,30 +133,6 @@ const recentPages = [
   { title: "Onboarding checklist", detail: "Updated Monday", icon: "file" as const },
 ];
 
-const projects = [
-  {
-    name: "Editorial launch",
-    description: "A focused home for the next release.",
-    progress: 72,
-    status: "On track",
-    statusClass: "bg-[#e4eee9] text-[#47705d]",
-  },
-  {
-    name: "Research sprint",
-    description: "Turn customer signals into decisions.",
-    progress: 46,
-    status: "In review",
-    statusClass: "bg-[#e7edf8] text-[#496589]",
-  },
-  {
-    name: "Product operations",
-    description: "Keep the team moving with less noise.",
-    progress: 28,
-    status: "Planning",
-    statusClass: "bg-[#f2eadb] text-[#8b6d3e]",
-  },
-];
-
 export default function WorkspacePage() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
@@ -548,50 +524,28 @@ export default function WorkspacePage() {
               </div>
 
               <section aria-labelledby="project-pulse-heading" className="mt-10">
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#a0a19a]">
-                      Across the workspace
-                    </p>
-                    <h2 className="mt-2 text-[22px] font-semibold tracking-[-0.04em] text-[#262823]" id="project-pulse-heading">
-                      Project pulse
-                    </h2>
-                  </div>
-                  <Link className="text-[12px] text-[#8a8c84] transition hover:text-[#262823]" href="/workspace?view=projects">
-                    View projects
-                  </Link>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#a0a19a]">
+                    Across your workspaces
+                  </p>
+                  <h2 className="mt-2 text-[22px] font-semibold tracking-[-0.04em] text-[#262823]" id="project-pulse-heading">
+                    Project pulse
+                  </h2>
                 </div>
 
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  {projects.map((project) => (
-                    <Link
-                      className="rounded-lg border border-[#e1e2dc] bg-[#fbfbf9] p-5 transition hover:-translate-y-0.5 hover:border-[#cfd2c8] hover:bg-white hover:shadow-[0_10px_25px_-20px_rgba(35,40,35,0.45)]"
-                      href={`/workspace?view=${project.name.toLowerCase().replaceAll(" ", "-")}`}
-                      key={project.name}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="grid size-8 place-items-center rounded-md bg-[#f0f0eb] text-[#777970]">
-                          <Icon className="size-[15px]" name="stack" />
-                        </span>
-                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${project.statusClass}`}>
-                          {project.status}
-                        </span>
-                      </div>
-                      <h3 className="mt-5 text-[14px] font-semibold tracking-[-0.02em] text-[#3d403a]">
-                        {project.name}
-                      </h3>
-                      <p className="mt-2 min-h-10 text-[12px] leading-5 text-[#8a8c84]">{project.description}</p>
-                      <div className="mt-5">
-                        <div className="flex items-center justify-between text-[10px] font-medium text-[#a0a19a]">
-                          <span>Progress</span>
-                          <span>{project.progress}%</span>
-                        </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9e9e4]">
-                          <div className="h-full rounded-full bg-[#6e786f]" style={{ width: `${project.progress}%` }} />
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                <div className="mt-4 flex items-start gap-4 rounded-lg border border-[#e1e2dc] bg-[#fbfbf9] p-5">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-md bg-[#f0f0eb] text-[#777970]">
+                    <Icon className="size-[16px]" name="stack" />
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-semibold text-[#4c4e48]">
+                      Projects are now saved inside a workspace.
+                    </p>
+                    <p className="mt-1 text-[12px] leading-5 text-[#8a8c84]">
+                      Use the Projects action in a workspace above to create
+                      and manage its projects.
+                    </p>
+                  </div>
                 </div>
               </section>
 
