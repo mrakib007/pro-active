@@ -244,3 +244,11 @@ Explain-it-back prompts are collected in
 explain why the service checks membership, why every query carries the
 workspace ID, and what each test layer catches, you understand the design—not
 just the syntax.
+
+### Current status
+
+The workspace-projects implementation and its final verification are complete.
+The detailed checklist and evidence are recorded in
+[docs/superpowers/plans/2026-09-14-workspace-projects.md](docs/superpowers/plans/2026-09-14-workspace-projects.md).
+The next learning experiment is a task resource nested under a project; its
+state model and consistency rules should be designed before implementation.

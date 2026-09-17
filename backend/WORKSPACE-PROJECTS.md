@@ -67,6 +67,37 @@ The page /workspace/:workspaceId/projects loads persisted projects, lists
 their names and descriptions, and gives owners/admins create, edit, and delete
 controls. The existing workspace list links to this page.
 
+## Request flow and layer responsibilities
+
+```text
+Browser
+  -> Next.js projects page and typed RTK Query API
+  -> Express route with session and CSRF middleware
+  -> Controller: route parameters, Zod validation, response status
+  -> Service: membership lookup and OWNER/ADMIN policy
+  -> Repository: workspace-scoped Prisma queries
+  -> PostgreSQL projects table
+```
+
+The frontend role check only controls the user experience. The service is the
+security boundary because a caller can bypass the UI and send HTTP requests
+directly. The repository repeats the workspace scope on reads and mutations,
+so a project identifier from another workspace cannot be used as an object
+access path. The database foreign key and cascade rule protect persistence
+consistency even if application code is wrong.
+
+## Verification evidence
+
+The slice was verified on 2026-09-17. Backend tests passed with 18 test files
+and 105 tests; frontend tests passed with 7 test files and 35 tests. Backend
+and frontend typechecks, lint, builds, formatting, the PostgreSQL database
+check, and `git diff --check` also passed.
+
+The tests cover the role matrix, strict request contracts, authentication,
+CSRF-protected mutations, workspace-scoped repository operations, cross-
+workspace isolation, workspace deletion cascades, frontend rendering, and
+RTK Query refresh behavior.
+
 ## Deliberate non-goals
 
 This slice does not include:
@@ -88,3 +119,10 @@ understood.
 3. Why can a MEMBER read a project but not mutate it?
 4. Which database constraint protects workspace deletion consistency?
 5. What would change if projects became independently shareable?
+
+## Next experiment
+
+After this reflection, the next product slice should introduce tasks inside a
+project. Design the task states, assignee relationship, ordering, deletion
+behavior, authorization policy, API contract, indexes, and transaction
+boundaries before writing the first failing tests.

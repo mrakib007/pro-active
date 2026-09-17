@@ -25,11 +25,11 @@
 ## Persistent learning roadmap
 
 - [x] **Phase 0 - Runtime foundation:** HTTP lifecycle, configuration, logging, error handling, health/readiness, graceful shutdown.
-- [ ] **Phase 1 - Database foundation:** PostgreSQL connection, migrations, schema design, constraints, joins, transactions.
+- [x] **Phase 1 - Database foundation:** PostgreSQL connection, migrations, schema design, constraints, joins, transactions.
   - [x] **Phase 1A - Database connection:** local database, Prisma client lifecycle, readiness check, and graceful disconnect.
-- [ ] **Phase 2 - Authentication:** registration, password hashing, opaque sessions, cookies, logout, revocation, security tests.
-- [ ] **Phase 3 - Authorization and tenancy:** workspaces, memberships, roles, policy checks, object-level access control.
-- [ ] **Phase 4 - Core product:** projects, tasks, comments, activity history, validation, API contracts, transactional writes.
+- [x] **Phase 2 - Authentication:** registration, password hashing, opaque sessions, cookies, logout, revocation, security tests.
+- [x] **Phase 3 - Authorization and tenancy:** workspaces, memberships, roles, policy checks, object-level access control.
+- [ ] **Phase 4 - Core product:** projects, tasks, comments, activity history, validation, API contracts, transactional writes. *(In progress: workspace-scoped projects are complete; tasks, comments, and activity history remain.)*
 - [ ] **Phase 5 - Database performance:** filtering, sorting, pagination, indexes, query plans, N+1 investigation.
 - [ ] **Phase 6 - Redis:** rate limiting, cache-aside reads, invalidation, TTLs, cache stampedes, Redis failure behavior.
 - [ ] **Phase 7 - Background work:** notification events, outbox records, queues, retries, idempotency, backoff, dead letters.
