@@ -64,8 +64,14 @@ The first micro-step adds the pure helper
 `src/modules/tasks/task-state.ts`. It defines the state vocabulary and the
 transition table without coupling the lesson to Prisma or Express.
 
-The first test proves that `TODO → IN_PROGRESS` is accepted. The remaining
-transitions and rejection cases are the next focused test step.
+Current coverage:
+
+- `task-state.test.ts` proves `TODO → IN_PROGRESS`;
+- `task-state-progress.test.ts` proves `IN_PROGRESS → DONE`; and
+- `task-state-reopen.test.ts` proves `DONE → TODO`.
+
+The transition table was implemented in the first helper step; the later
+tests make each approved transition visible as a regression contract.
 
 ## Deferred boundaries
 
@@ -79,5 +85,5 @@ transitions and rejection cases are the next focused test step.
 
 ## Next single step
 
-Add focused tests for the next transition, `IN_PROGRESS → DONE`, then run the
-focused test and the full backend suite again.
+Add a focused test proving that the invalid `TODO → DONE` transition is
+rejected, then run the focused test and the full backend suite again.
